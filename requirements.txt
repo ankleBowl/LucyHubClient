@@ -3,7 +3,7 @@ kokoro==0.9.4
 matplotlib==3.10.3
 nemo_toolkit[asr]==2.3.1
 numpy==1.26.0
-openwakeword==0.6.0
+openwakeword
 peft==0.15.2
 PyAudio==0.2.14
 pydub==0.25.1

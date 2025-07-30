@@ -1,14 +1,11 @@
 #!/bin/bash
-
-if ! python3 -c "import venv" &>/dev/null; then
-    echo "Error: The 'venv' module is not installed. Please install it first."
-    echo "Try: 'pip3 install virtualenv' or ensure your Python installation includes venv."
-    exit 1
-fi
-
 if [ ! -d "venv" ]; then
     echo "Creating virtual environment..."
-    python3 -m venv venv
+    if ! python3 -m venv venv; then
+        echo "Error: Failed to create virtual environment. Aborting."
+        exit 1
+    fi
+    echo "Virtual environment created successfully."
 fi
 
 # Activate virtual environment

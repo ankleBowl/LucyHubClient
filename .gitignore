@@ -1,0 +1,8 @@
+.env
+elevenlabs_cache/
+
+*.pyc
+__pycache__/
+.vscode/
+temp_audio.wav
+.DS_Store

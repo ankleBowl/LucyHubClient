@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<head>
+    <title>Spotify Fullscreen Player</title>
+    <meta charset="utf-8">
+    <style>
+        @import url("https://use.typekit.net/jmr4hbb.css");
+
+        body {
+            position: relative;
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+
+            /* background-color: gray; */
+
+            font-family: 'SF Pro Display', 'Filson Pro' , 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+        }
+
+        #glcanvas {
+            width: 100%;
+            height: 100%;
+
+            filter: blur(10px) contrast(110%) saturate(2) brightness(65%)
+        }
+
+        /* preblur image while respeting contrast tso that i can use a lesser blur here */
+
+        #canvasContainer {
+            position: fixed;
+            left: -15%;
+            top: -15%;
+            right: -15%;
+            bottom: -15%;
+    
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 50px;
+
+
+
+        }
+
+        #main-container {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+
+            display: flex;
+            box-sizing: border-box;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6vw;
+
+            transition: gap 0.25s ease-out;
+        }
+
+        #main-container > div {
+            height: 100%;
+        }
+
+        #now-playing-view {
+            flex: 0.75;
+            
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+
+            max-width: calc(485px + 6.5vw);
+
+            text-align: center;
+
+            transition: max-width 0.25s ease-out;
+        }
+
+        #album-art {
+            width: 100%;
+            aspect-ratio: 1;
+            background-color: purple;
+            border-radius: 10px;
+
+            box-shadow: 0 0 40px 0px rgba(0, 0, 0, 0.15);
+        }
+
+        #now-playing-info {
+            position:relative;
+
+            width: 96%;
+            height: 0;
+        }   
+
+        #now-playing-info > div {
+            position: absolute;
+            margin-top: 3vw;
+            left: 0;
+            right: 0;
+        }
+
+        #progress-bar-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #progress-times {
+            display: flex;
+            width: 98%;
+            justify-content: space-between;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+
+        #progress-bar {
+            width: 98%;
+            height: 3.5px;
+            border-radius: 3px;
+            overflow: hidden;
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+        #progress-bar > div {
+            width: 50%;
+            height: 100%;
+            background-color: white;
+            border-radius: 3px;
+        }
+
+
+        
+        #song-info {
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            position: relative;
+        }
+
+
+        p {
+            color: rgba(255, 255, 255, 0.4);
+            margin: 0;
+
+            font-size: 1.2em;
+
+        }
+
+        #title {
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            transition: opacity 0.15s ease-out;
+        }
+
+        #metadata {
+            transition: opacity 0.15s ease-out;
+        }
+
+
+
+        /* FOR WHEN LYRICS ARE VISIBLE */
+        .lyrics-visible #now-playing-view {
+            max-width: calc(465px + 6.5vw);
+        }
+
+        .lyrics-visible #lyrics-view {
+            width: 40vw;
+        }
+
+        .lyrics-visible {
+            gap: 100px;
+        }
+
+        #lyrics-view {
+            width: 0;
+            overflow: hidden;
+            box-sizing: border-box;
+            position: relative;
+            mask-image: linear-gradient(rgba(0, 0, 0, 0), black 50%, rgba(0, 0, 0, 0));
+            transition: opacity 0.5s ease-out, width 0.25s ease-out;
+            height: 100%;
+        }
+
+        #lyrics-view > p {
+            /* font-size: 3.1em; */
+            font-size: calc(1.1em + 1.5vw);
+
+            position: absolute;
+
+            right: 6%;
+            left: 6%;
+
+            font-weight: bold;
+
+            transition: top 0.2s ease-in-out, opacity 0.2s ease-out, color 0.2s ease-out;
+        }
+        #lyrics-view > * {
+            position: absolute;
+            right: 6%;
+            left: 6%;
+            transition: top 0.2s ease-in-out, opacity 0.2s ease-out, color 0.2s ease-out;
+        }
+
+        #lyrics-view > .song-pause {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            height: 30px;
+        }
+
+        #lyrics-view > .song-pause > div {
+            height: 18px;
+            width: 18px;
+            background-color: rgba(255, 255, 255, 0.4);
+            border-radius: 100%;
+
+            transition: background-color 0.2s linear;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+
+        #playback-controls {
+            position: absolute;
+
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 30px;
+
+            transition: opacity 0.15s ease-out;
+        }
+
+        #playback-controls > div {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0px;
+        }
+
+        #playback-controls button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            
+            border-radius: 10px;
+            border: none;
+            background: none;
+
+
+            height: 40px;
+            aspect-ratio: 1;
+            
+            opacity: 0.4;
+        }
+        
+        #playback-controls button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+    </style>
+</head>
+<body onload="start()">
+    <div id="canvasContainer">
+        <canvas id="glcanvas"></canvas>
+    </div>
+</body>
+<script type="text/javascript">
+    let gl;
+    let sId;
+    let vBuff;
+    let iBuff;
+    let timer = 0;
+
+    let targetTexture = 0;
+    let blendAmount = 0;
+
+    function initWebGL() {
+        let canvas = document.getElementById("glcanvas");
+        gl = canvas.getContext("webgl2")
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        initShaderProgram();
+        initBuffers();
+    }
+
+    function initShaderProgram() {
+        sId = gl.createProgram();
+        let vertId = gl.createShader(gl.VERTEX_SHADER);
+        let fragId = gl.createShader(gl.FRAGMENT_SHADER);
+        let vert = document.getElementById("vertScript").text;
+        let frag = document.getElementById("fragScript").text;
+
+        gl.shaderSource(vertId, vert);
+        gl.shaderSource(fragId, frag);
+        gl.compileShader(vertId);
+        gl.compileShader(fragId);
+        if (!gl.getShaderParameter(vertId, gl.COMPILE_STATUS)) {
+            alert("Vertex Shader Compiler Error: " + gl.getShaderInfoLog(vertId));
+            gl.deleteShader(vertId);
+            return;
+        }
+        if (!gl.getShaderParameter(fragId, gl.COMPILE_STATUS)) {
+            alert("Fragment Shader Compiler Error: " + gl.getShaderInfoLog(fragId));
+            gl.deleteShader(fragId);
+            return;
+        }
+        gl.attachShader(sId, vertId);
+        gl.attachShader(sId, fragId);
+        gl.linkProgram(sId);
+        if (!gl.getProgramParameter(sId, gl.LINK_STATUS)) {
+            alert("Shader Linking Error: " + gl.getProgramInfoLog(sId));
+        }
+    }
+
+    function initBuffers() {
+        let vertices = new Float32Array([
+            // Position (xyz)    // UV coordinates (xy)
+            -1.0, -1.0, 0.0,    0.0, 0.0,
+            -1.0,  1.0, 0.0,    0.0, 1.0,
+            1.0,  1.0, 0.0,    1.0, 1.0,
+            1.0, -1.0, 0.0,    1.0, 0.0
+        ]);
+        let indices = new Uint16Array([0, 1, 3, 2]);
+        vBuff = gl.createBuffer()
+        gl.bindBuffer(gl.ARRAY_BUFFER, vBuff);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        iBuff = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, iBuff);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+    }
+
+    function initTextures(album_art_src) {
+        if (activeTexture == "u_texture_one") {
+            activeTexture = "u_texture_two";
+        } else {
+            activeTexture = "u_texture_one";
+        }
+
+        console.log("Loading texture: ", album_art_src);
+        console.log("Active texture: ", activeTexture);
+
+
+        let newImage = document.createElement("img");
+        newImage.setAttribute("crossorigin", "anonymous");
+        newImage.src = album_art_src;
+        newImage.onload = function () {
+            let canvas = document.createElement("canvas")
+            let ctx = canvas.getContext("2d");
+            ctx.imageSmoothingEnabled = false;
+            canvas.width = 40;
+            canvas.height = 40;
+            ctx.drawImage(newImage, 0, 0, canvas.width, canvas.height);
+
+            canvas = pixelSortH(canvas);
+            canvas = pixelSortV(canvas);
+            
+
+            let textureUnit = activeTexture === "u_texture_one" ? gl.TEXTURE0 : gl.TEXTURE1;
+            let textureUnitIndex = activeTexture === "u_texture_one" ? 0 : 1;
+
+            let uMainTex = gl.getUniformLocation(sId, activeTexture);
+            gl.activeTexture(textureUnit);
+            gl.uniform1i(uMainTex, textureUnitIndex);
+
+            const texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
+
+            targetTexture = Math.abs(1 - textureUnitIndex);
+        };
+    }
+    
+    window.requestAnimFrame = (function () {
+        return window.requestAnimationFrame ||
+            function (callback) {
+                window.setTimeout(callback, 1000 / 60);
+            };
+    })();
+
+
+    function animationLoop() {
+        requestAnimFrame(animationLoop);
+        render();
+    }
+
+    function render() {
+        timer += 0.1;
+        gl.useProgram(sId);
+
+        let timeID = gl.getUniformLocation(sId, "u_time");
+        gl.uniform1f(timeID, timer / 100);
+
+        let resId = gl.getUniformLocation(sId, "u_resolution");
+        let canvasBox = gl.canvas.getBoundingClientRect();
+        gl.uniform2f(resId, canvasBox.width, canvasBox.height);
+
+        let attId = gl.getAttribLocation(sId, "position");
+        gl.enableVertexAttribArray(attId);
+        gl.bindBuffer(gl.ARRAY_BUFFER, vBuff);
+        gl.vertexAttribPointer(attId, 3, gl.FLOAT, false, 5 * 4, 0);
+
+        let uvId = gl.getAttribLocation(sId, "texCoord");
+        gl.enableVertexAttribArray(uvId);
+        gl.vertexAttribPointer(uvId, 2, gl.FLOAT, false, 5 * 4, 3 * 4); // offset is 3 floats * 4 bytes
+
+        let blendAmountId = gl.getUniformLocation(sId, "blend_amount");
+        gl.uniform1f(blendAmountId, blendAmount);
+
+        if (targetTexture == 0 && blendAmount > 0) {
+            blendAmount -= 0.02;
+            if (blendAmount < 0) {
+                blendAmount = 0;
+            }
+        }
+        if (targetTexture == 1 && blendAmount < 1) {
+            blendAmount += 0.02;
+            if (blendAmount > 1) {
+                blendAmount = 1;
+            }
+        }
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, iBuff);
+        gl.drawElements(gl.TRIANGLE_STRIP, 4, gl.UNSIGNED_SHORT, 0);
+    }
+
+    let activeTexture = "u_texture_one";
+
+    function start() {
+        initWebGL();
+        animationLoop();
+        fixSize();
+    }
+
+    window.addEventListener("message", function (event) {
+        console.log("Received message from parent:", event.data);
+        if (event.data.type === "set_background") {
+            initTextures(event.data.image_src);
+        }
+    });
+
+
+    function fixSize() {
+        let canvas = document.getElementById("glcanvas");
+        canvas.width = canvas.getBoundingClientRect().width;
+        canvas.height = canvas.getBoundingClientRect().height;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+    }
+
+    window.onresize = fixSize;
+
+</script>
+<script>
+    const threshold = 0;
+    const vertical = false;
+    const invert = false;
+
+    // Stolen from here http://feiss.github.io/pixelsorting/
+    function pixelSortH(canvas){
+        let c = canvas.getContext('2d');
+        let b = canvas
+        for(var row= 0; row< b.height; row++){
+            var imdata = c.getImageData(0, row, b.width, 1);
+            var data = imdata.data;
+
+            var pixels= getPixelsArray(data);
+            
+            var start= 0;
+            var end = findValueLess(pixels, row, threshold, start);
+            while (start<b.width) {
+                var range= pixels.splice(start, end-start);
+                range.sort(invert?simpleMeanSortInverted:simpleMeanSort);
+                pixels.splice.apply(pixels, [start,0].concat(range));
+                
+                start= end;
+                end= findValueLess(pixels, row, threshold, start+1);
+            }
+            setDataFromPixelsArray(data, pixels);
+            c.putImageData(imdata, 0, row);
+        }
+        return b;
+    }
+
+    function pixelSortV(canvas) {
+        let c = canvas.getContext('2d');
+        let b = canvas;
+        for(var col= 0; col< b.width; col++){
+            var imdata= c.getImageData(col, 0, 1, b.height);
+            var data= imdata.data;
+
+            var pixels= getPixelsArray(data);
+            
+            var start= 0;
+            var end= findValueLess(pixels, col, threshold, start);
+            while(start<b.height){
+                var range= pixels.splice(start, end-start);
+                range.sort(invert?simpleMeanSortInverted:simpleMeanSort);
+                pixels.splice.apply(pixels, [start,0].concat(range));
+                
+                start= end;
+                end= findValueLess(pixels, col, threshold, start+1);
+            }
+                
+            setDataFromPixelsArray(data, pixels);
+            c.putImageData(imdata, col, 0);
+        }
+        return b;
+    }
+
+    function getPixelsArray(data){
+        var p= [], c;
+        for (var i = 0; i < data.length/4; i++) {
+            c= i*4;
+            p.push({r: data[c+0], g: data[c+1], b: data[c+2]});
+        };
+        return p;
+    }
+
+    function simpleMeanSort(a,b){
+        var aa= (a.r+a.g+a.b)/3;
+        var bb= (b.r+b.g+b.b)/3;
+        return aa<bb?-1: (aa>bb?1:0);
+    }
+    function simpleMeanSortInverted(a,b){
+        var aa= (a.r+a.g+a.b)/3;
+        var bb= (b.r+b.g+b.b)/3;
+        return aa>bb?-1: (aa<bb?1:0);
+    }
+
+    function setDataFromPixelsArray(data, pixels){
+        var c;
+        for (var i = 0; i < pixels.length; i++) {
+            c= i*4;
+            data[c+0]= pixels[i].r;
+            data[c+1]= pixels[i].g;
+            data[c+2]= pixels[i].b;
+        }
+    }
+
+    function findValue(pixels, row, val, start){
+        for (var i=start; i< pixels.length; i++){
+            if (pixels[i].r==val.r && pixels[i].g==val.g && pixels[i].b==val.b) {
+                return i;
+            }
+        }
+        return pixels.length;
+    }
+
+    function findValueLess(pixels, row, val, start){
+        for (var i=start; i< pixels.length; i++){
+            if ((pixels[i].r+pixels[i].g+pixels[i].b)/3 < val) {
+                return i;
+            }
+        }
+        return pixels.length;
+    }
+</script>
+<script id="vertScript" type="x-shader/x-vertex">#version 300 es
+    layout(location = 0) in vec3 position;
+    layout(location = 1) in vec2 texCoord;
+    
+    out vec2 uv;  // Pass texture coordinates to the fragment shader
+    
+    void main() {
+        uv = texCoord;
+        gl_Position = vec4(position, 1.0);
+    }
+</script>
+<script id="fragScript" type="x-shader/x-fragment">#version 300 es
+    precision highp float;
+    precision highp sampler2D;
+    
+    // normalized coordinates, (0,0) is the bottom left
+    in vec2 uv;
+    // resulting fragment color, you may name it whatever you like
+    out vec4 out_color;
+    
+    // @note you can hover over symbols, variables, struct types and functions for more info
+    
+    // size of the canvas in pixels
+    uniform vec2 u_resolution;
+    // elapsed time since shader compile in seconds
+    uniform float u_time;
+    // mouse pixel coordinates are in canvas space, (0,0) is top left
+    uniform vec4 u_mouse;
+    // texture array
+    uniform sampler2D u_texture_one;
+    uniform sampler2D u_texture_two;
+    uniform float blend_amount;
+    
+
+    float rand(vec2 c){
+        return fract(sin(dot(c.xy ,vec2(12.9898,78.233))) * 43758.5453);
+    }
+    
+    float noise(vec2 p, float freq ){
+        float unit = 1.;
+        vec2 ij = floor(p/unit);
+        vec2 xy = mod(p,unit)/unit;
+        //xy = 3.*xy*xy-2.*xy*xy*xy;
+        xy = .5*(1.-cos(3.1415*xy));
+        float a = rand((ij+vec2(0.,0.)));
+        float b = rand((ij+vec2(1.,0.)));
+        float c = rand((ij+vec2(0.,1.)));
+        float d = rand((ij+vec2(1.,1.)));
+        float x1 = mix(a, b, xy.x);
+        float x2 = mix(c, d, xy.x);
+        return mix(x1, x2, xy.y);
+    }
+    
+    float pNoise(vec2 p, int res){
+        float persistance = .5;
+        float n = 0.;
+        float normK = 0.;
+        float f = 4.;
+        float amp = 1.;
+        int iCount = 0;
+        for (int i = 0; i<50; i++){
+            n+=amp*noise(p, f);
+            f*=2.;
+            normK+=amp;
+            amp*=persistance;
+            if (iCount == res) break;
+            iCount++;
+        }
+        float nf = n/normK;
+        return nf*nf*nf*nf;
+    }
+
+    float normalizedSine(float t) {
+        return (sin(t) + 1.) / 2.;
+    }
+
+
+
+
+    float curveEquation(float uv_y) {
+        float sinWave = -sin(uv_y * (normalizedSine(u_time) + 0.5) * 4.) / 3.;
+        float linear = sin(uv_y * (normalizedSine(u_time) + 0.5) * 4.) / 3.;
+    
+        float blendAmount = (sin(u_time * 1.4) + 1.) / 2.;
+        // float blendAmount = 1.;
+        sinWave = sinWave * blendAmount + (linear * (1. - blendAmount));
+    
+        sinWave += cos(uv.x * 4.35 + u_time) * 0.1;
+        sinWave += cos(uv.x * 6.51 + u_time) * 0.05;
+        return sinWave;
+    }
+    
+    vec3 colorRamp(float t, vec3 colors[5]) {
+        t = fract(t - 0.1);
+        t = 1.0 - abs(2.0 * t - 1.0);
+        t *= 4.0;
+        
+        vec3 finalColor = vec3(0.0);
+        float totalWeight = 0.0;
+        
+        for(int i = 0; i < 5; i++) {
+            float dist = abs(float(i) - t);
+            float weight = 1.0 - smoothstep(0.0, 3.0, dist);
+            finalColor += colors[i] * weight;
+            totalWeight += weight;
+        }
+        
+        return finalColor / totalWeight;
+    }
+
+    vec3 blendTextureSample(vec2 uv) {
+        return mix(texture(u_texture_one, uv).rgb, texture(u_texture_two, uv).rgb, 1. - blend_amount);
+    }
+    
+    void main(){
+        vec2 sample_point = vec2(uv.x - 0.5, uv.y - 0.5);
+        // float power = ((sin(u_time + (uv.y * 5.)) + 1.) / 2.) + 0.7;
+        float power = normalizedSine(u_time + (uv.y * 5.)) * 1. + 0.3;
+        // float power = 0.1;
+        float val = (sample_point.x - curveEquation(sample_point.y));
+
+        float isNeg = sign(val);
+        float col = pow(abs(val), power) + 0.5;
+        col = col * isNeg;
+
+        //float signVal = sign(sin(u_time * 0.25));
+        //if (signVal < 0.) {
+        //    col = 1. - col;
+        //} else {
+        //    col = col;
+        //}
+        //col *= abs(sin(u_time * 0.25));
+        // col += sin(u_time * 1.95) / 3.;
+
+        col += sin(u_time + (sin(u_time) * uv.x) + (cos(u_time) * uv.y)) / 2.;
+        // if (col > 1.) {
+        //     col = 2. - col;
+        // }
+        // if (val < 0.) {
+        //     col = abs(col);
+        // }
+
+        if (val < 0.01 && val > -0.01) {
+            // out_color = vec4(1., 0., 0., 1.);
+            // return;
+        }
+
+        // col *= 0.5;
+        col += u_time * 0.5;
+        col += pNoise(uv * 10., 5) * 0.05;
+        
+        //vec3 colors[5] = vec3[5](
+        //    blendTextureSample(vec2(0.1, 0.1)),
+        //    blendTextureSample(vec2(0.3, 0.3)),
+        //    blendTextureSample(vec2(0.5, 0.5)),
+        //    blendTextureSample(vec2(0.7, 0.7)),
+        //    blendTextureSample(vec2(0.9, 0.9))
+        //);
+        vec3 colors[5] = vec3[5](
+            blendTextureSample(vec2(0.5 + 0.4 * cos(u_time + 0.0 * 6.28), 0.5 + 0.4 * sin(u_time + 0.0 * 6.28))),
+            blendTextureSample(vec2(0.5 + 0.4 * cos(u_time + 0.2 * 6.28), 0.5 + 0.4 * sin(u_time + 0.2 * 6.28))),
+            blendTextureSample(vec2(0.5 + 0.4 * cos(u_time + 0.4 * 6.28), 0.5 + 0.4 * sin(u_time + 0.4 * 6.28))),
+            blendTextureSample(vec2(0.5 + 0.4 * cos(u_time + 0.6 * 6.28), 0.5 + 0.4 * sin(u_time + 0.6 * 6.28))),
+            blendTextureSample(vec2(0.5 + 0.4 * cos(u_time + 0.8 * 6.28), 0.5 + 0.4 * sin(u_time + 0.8 * 6.28)))
+        );
+        out_color = vec4(colorRamp(col, colors), 1);
+    
+    }
+</script>
+</html>

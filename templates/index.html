@@ -1,0 +1,449 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LucyHubHome</title>
+    <style>
+        @import url("https://use.typekit.net/jmr4hbb.css");
+
+        :root {
+            --in-focus-color: black;
+        }
+
+        .dark {
+            --in-focus-color: white;
+            background-color: black;
+        }
+
+        p {
+            margin: 0;
+            padding: 0;
+            font-family: 'filson-pro', sans-serif;
+            color: var(--in-focus-color);
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+
+        }
+
+        /* IDLE */
+        .lucy-indicators.idle > div {
+            opacity: 0;
+        }
+
+        .lucy-indicators.idle > div:nth-child(3) {
+            opacity: 1;
+            
+            width: 250px;
+            border-radius: 10px;
+            transform: rotate(45deg);
+
+            background-color: transparent;
+            box-sizing: border-box;
+
+            border: 5px solid var(--in-focus-color);
+        }
+
+        /* LISTENING */
+        .lucy-indicators.listening > div {
+            opacity: 0;
+        }
+
+        .lucy-indicators.listening > div:nth-child(3) {
+            opacity: 1;
+            
+            width: 200px;
+            border-radius: 10px;
+            transform: rotate(45deg);
+
+            /* background-color: orange; */
+
+            background-color: transparent;
+            backdrop-filter: invert(1);
+
+            box-sizing: border-box;
+        }
+
+
+        /* THINKING */
+        @keyframes thinking {
+            0% {
+                transform: translateY(0) scale(1);
+            }
+            50% {
+                transform: translateY(-20px) scale(1);
+            }
+            100% {
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .lucy-indicators.thinking > div { animation: thinking 1s infinite; }
+        .lucy-indicators.thinking > div:nth-child(1) { animation-delay: 0s; }
+        .lucy-indicators.thinking > div:nth-child(2) { animation-delay: 0.2s; }
+        .lucy-indicators.thinking > div:nth-child(3) { animation-delay: 0.4s; }
+        .lucy-indicators.thinking > div:nth-child(4) { animation-delay: 0.6s; }
+        .lucy-indicators.thinking > div:nth-child(5) { animation-delay: 0.8s; }
+
+        /* SPEAKING */
+        .lucy-indicators.speaking > div {
+            animation-fill-mode: forwards;
+        }
+        /* @keyframes speaking {
+            0% {
+                transform: scaleY(1);
+            }
+            50% {
+                transform: scaleY(1.4);
+            }
+            100% {
+                transform: scaleY(1);
+            }
+        }
+        
+        .lucy-indicators.speaking > div { animation: speaking 1s infinite; background-color: orange; }
+        .lucy-indicators.speaking > div:nth-child(1) { animation-delay: 0s; animation-duration: 0.6s; }
+        .lucy-indicators.speaking > div:nth-child(2) { animation-delay: 0.1s; animation-duration: 0.6s; }
+        .lucy-indicators.speaking > div:nth-child(3) { animation-delay: 0.2s; animation-duration: 0.6s; }
+        .lucy-indicators.speaking > div:nth-child(4) { animation-delay: 0.3s; animation-duration: 0.6s; }
+        .lucy-indicators.speaking > div:nth-child(5) { animation-delay: 0.4s; animation-duration: 0.6s; } */
+
+        .lucy-indicators.speaking > div {
+            transition: transform 0.1s linear; 
+            background: transparent;
+            backdrop-filter: invert(1);
+        }
+
+        /* NOT READY */
+        .lucy-indicators.not-ready > div {
+            opacity: 0;
+        }
+
+        .lucy-indicators.not-ready > div:nth-child(3) {
+            opacity: 0.5;
+            background-color: transparent;
+
+            width: 200px;
+            aspect-ratio: 1;
+            box-sizing: border-box;
+
+            transform: rotate(35deg);
+            
+            border-radius: 10px;
+            border: 5px solid var(--in-focus-color);
+        }
+
+        .lucy-indicators.not-ready > div:nth-child(3)::before,
+        .lucy-indicators.not-ready > div:nth-child(3)::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            width: 270px;
+            height: 5px;
+            background-color: var(--in-focus-color);
+        }
+
+        .lucy-indicators > div:nth-child(3)::before {
+            left: 2px;
+            transform: translateY(-75%) rotate(45deg);
+            transform-origin: top left;
+            opacity: 0;
+
+        }
+
+        .lucy-indicators > div:nth-child(3)::after {
+            right: 2px;
+            transform: translateY(-75%) rotate(-45deg);
+            transform-origin: top right;
+            opacity: 0;
+        }
+
+        .lucy-indicators {
+            display: flex;
+            gap: 5px;
+
+            align-items: center;
+            justify-content: center;
+        }
+        .lucy-indicators > div {
+            width: 100px;
+            aspect-ratio: 1;
+
+            background-color: var(--in-focus-color);
+            border-radius: 50px;
+
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* IFRAME */
+        #iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s ease-in-out;
+        }
+
+        /* NOW PLAYING VIEW */
+        body:has(.listening) .now-playing-view,
+        body:has(.thinking) .now-playing-view,
+        body:has(.speaking) .now-playing-view {
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        .now-playing-view {
+            position: absolute;
+            top: 0px;
+            bottom: 0px;
+            left: 0px;
+            right: 0px;
+
+            padding: 10px;
+            box-sizing: border-box;
+        
+            transition: all 0.6s ease-in-out;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 20px;
+
+            backdrop-filter: blur(10px);
+
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .now-playing-view.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .now-playing-view > #album-art {
+            height: 50vh;
+            aspect-ratio: 1;
+
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+
+        }
+
+        .now-playing-view > div {
+            text-align: center;
+        }
+
+        .now-playing-view > div > #track-title {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+
+        .now-playing-view > div > #track-artist {
+            font-size: 1.5em;
+            opacity: 0.8;
+        }
+
+
+        #music-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s ease-in-out;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body class="">
+    <div class="lucy-indicators not-ready">
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    <iframe id="iframe" style="display: none; width: 100%; height: 100%; border: none;"></iframe>
+    <div class="now-playing-view">
+        <img id="album-art">
+        <div>
+            <p id="track-title">Track title</p>
+            <p id="track-artist">Track artist</p>
+        </div>
+
+    </div>
+    <iframe id="music-bg" src="background.html"></iframe>
+</body>
+<script>
+    // classes = ['idle', 'listening', 'thinking', 'speaking', 'not-ready'];
+    // index = 0;
+    // function cycleIndicators() {
+    //     const indicators = document.querySelector('.lucy-indicators');
+    //     indicators.className = `lucy-indicators ${classes[index]}`;
+    //     index = (index + 1) % classes.length;
+    // }
+    // setInterval(cycleIndicators, 3000);
+</script>
+<script>
+    let flags = {}
+    let currentState = 'not-ready';
+
+    window.LucyHub = {
+        setState: (state) => {
+            restoreLucyIndicators();
+            currentState = state;
+            const indicators = document.querySelector('.lucy-indicators');
+            indicators.className = `lucy-indicators ${state}`;
+        },
+        setSpeakingVisualizer: (volume_array) => {
+            // VOLUME ARRAY IS AN ARRAY FROM 0 TO 1 OF 5 BINS
+            if (currentState !== 'speaking') {
+                return;
+            }
+            const indicators = document.querySelector('.lucy-indicators');
+            for (let i = 0; i < indicators.children.length; i++) {
+                const div = indicators.children[i];
+                div.style.transform = `scaleY(${(volume_array[i] * 3) + 0.25})`;
+            }
+        },
+        loadIFrame: (url, isVisible) => {
+            flags = {}
+
+            const iframe = document.getElementById('iframe');
+            iframe.src = url;
+            iframe.style.display = isVisible ? 'block' : 'none';
+            iframe.style.opacity = isVisible ? '1' : '0';
+            iframe.style.pointerEvents = isVisible ? 'auto' : 'none';
+        },
+        sendTriggerToIFrame: (trigger) => {
+            sendMessageToIFrame({
+                type: trigger,
+            });
+        },
+        getIFrameURL: () => {
+            const iframe = document.getElementById('iframe');
+            return iframe.src;
+        },
+        getFlag: (flag) => {
+            return flags[flag] || false;
+        },
+        setVolume: (volume) => {
+            console.log('Setting volume to:', volume);
+            sendMessageToIFrame({
+                type: 'set_volume',
+                data: { volume }
+            });
+        },
+    }
+
+    function restoreLucyIndicators() {
+        const indicators = document.querySelector('.lucy-indicators');
+        for (let i = 0; i < indicators.children.length; i++) {
+            const div = indicators.children[i];
+            div.style.transform = '';
+        }
+    }
+
+    function sendMessageToIFrame(message) {
+        const iframe = document.getElementById('iframe');
+        if (iframe.contentWindow) {
+            iframe.contentWindow.postMessage(message, '*');
+        }
+    }
+
+    function setFlag(flag, value) {
+        flags[flag] = value;
+    }
+
+    window.addEventListener('message', (event) => {
+        if (event.data.type === 'set_flag') {
+            setFlag(event.data.data.flag, event.data.data.value);
+        }
+        if (event.data.type === 'show_music_player') {
+            
+        }
+        if (event.data.type === 'hide_music_player') {
+            
+        }
+        if (event.data.type === 'music_player_state_changed') {
+//             [Log] Object (index.html, line 392)
+
+        // album_art: "https://i.scdn.co/image/ab67616d0000b2738602f6b89b0471366382d42e"
+
+        // is_playing: true
+
+        // track_album: "Cigarettes & Wine (feat. Holly Humberstone)"
+
+        // track_artist: "Del Water Gap, Holly Humberstone"
+
+        // track_duration: 181666
+
+        // track_progress: 164955
+
+        // track_title: "Cigarettes & Wine (feat. Holly Humberstone)"
+
+        // Object Prototype
+            handleNowPlayingEvent(event.data.data);
+        }
+    });
+
+    function handleNowPlayingEvent(data) {
+        const albumArt = document.getElementById('album-art');
+        const trackTitle = document.getElementById('track-title');
+        const trackArtist = document.getElementById('track-artist');
+        const musicBg = document.getElementById('music-bg');
+
+
+        albumArt.src = data.album_art;
+        trackTitle.textContent = data.track_title;
+        trackArtist.textContent = data.track_artist;  
+
+        if (data.is_playing) {
+            const nowPlayingView = document.querySelector('.now-playing-view');
+            nowPlayingView.classList.add('show');
+            musicBg.style.opacity = '1';
+            document.body.classList.add('dark');
+        } else {
+            const nowPlayingView = document.querySelector('.now-playing-view');
+            nowPlayingView.classList.remove('show');
+            musicBg.style.opacity = '0';
+            document.body.classList.remove('dark');
+        }
+
+        musicBg.contentWindow.postMessage({
+            type: 'set_background',
+            image_src: data.album_art
+        }, '*');
+    }
+
+    // setTimeout(() => {
+    //     simulated_now_playing_data = {
+    //         album_art: "https://i.scdn.co/image/ab67616d0000b2738602f6b89b0471366382d42e",
+    //         is_playing: true,
+    //         track_album: "Cigarettes & Wine (feat. Holly Humberstone)",
+    //         track_artist: "Del Water Gap, Holly Humberstone",
+    //         track_duration: 181666,
+    //         track_progress: 164955,
+    //         track_title: "Cigarettes & Wine (feat. Holly Humberstone)"
+    //     };
+    //     handleNowPlayingEvent(simulated_now_playing_data);
+    // }, 1000);
+</script>
+</html>

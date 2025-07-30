@@ -2,9 +2,7 @@ import pyaudio, torch
 import numpy as np
 import nemo.collections.asr as nemo_asr
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-import re
 import threading
-import openai
 import time
 
 from transformers import AutoTokenizer, BertForSequenceClassification

@@ -6,3 +6,5 @@ __pycache__/
 .vscode/
 temp_audio.wav
 .DS_Store
+.last_commit
+venv/

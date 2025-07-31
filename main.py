@@ -1,5 +1,4 @@
 import asyncio
-from lucywebview import LucyWebView, SeleniumLucyWebView
 import websockets
 import json
 from speech import VoiceAssistant, DetectWakeWordProvider, ParakeetTranscriptionProvider, RequestClassifierBERT
@@ -14,6 +13,11 @@ from tools.spotify import LSpotifyClient
 from tools.clock import LClockClient
 
 from sound import SoundManager, Sound
+
+if os.getenv("WEBVIEW_TYPE") != "pywebview":
+    from lucywebview import SeleniumLucyWebView
+else:
+    from lucywebview import LucyWebView
 
 voice = None
 lucy_webview = None
@@ -290,7 +294,10 @@ if __name__ == "__main__":
         loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown()))
 
     print_colored_log("Starting Lucy WebView...", "blue")
-    lucy_webview = SeleniumLucyWebView(driver="firefox", fullscreen=False)
+    if os.getenv("WEBVIEW_TYPE") == "pywebview":
+        lucy_webview = LucyWebView(fullscreen=True)
+    else:
+        lucy_webview = SeleniumLucyWebView(driver=os.getenv("WEBVIEW_TYPE"), fullscreen=True)
 
     try:
         loop.run_until_complete(app())

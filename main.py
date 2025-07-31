@@ -1,5 +1,5 @@
 import asyncio
-from lucywebview import LucyWebView
+from lucywebview import LucyWebView, SeleniumLucyWebView
 import websockets
 import json
 from speech import VoiceAssistant, DetectWakeWordProvider, ParakeetTranscriptionProvider, RequestClassifierBERT
@@ -289,7 +289,7 @@ if __name__ == "__main__":
         loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown()))
 
     print_colored_log("Starting Lucy WebView...", "blue")
-    lucy_webview = LucyWebView()
+    lucy_webview = SeleniumLucyWebView(driver="firefox", fullscreen=False)
 
     try:
         loop.run_until_complete(app())

@@ -12,12 +12,19 @@ class LSpotifyClient(LucyClientModule):
             start_time = asyncio.get_event_loop().time()
             url = f"http{get_url()}/v1/{USER_ID}/module/spotify/web_player"
             iframe_url = self.lucy_webview.run_javascript(f"LucyHub.getIFrameURL()")
+            print(f"Current iframe URL: {iframe_url}")
             if iframe_url != url:
+                print(f"Loading new URL: {url}")
                 self.lucy_webview.run_javascript(f"LucyHub.loadIFrame('{url}', false)")
+                print("Waiting for Spotify Web Playback SDK to be ready...")
                 await self.get_lucy_webview().wait_for_var(f"LucyHub.getFlag('spotify_web_playback_sdk_ready')", True, timeout=5)
+                print("Spotify Web Playback SDK is ready.")
 
+            print("Sending trigger to IFrame to connect...")
             self.lucy_webview.run_javascript("LucyHub.sendTriggerToIFrame('connect')")
             is_ready = await self.get_lucy_webview().wait_for_var("LucyHub.getFlag('spotify_ready')", True, timeout=3)
+            print(f"Spotify ready status: {is_ready}")
+            
             end_time = asyncio.get_event_loop().time()
             self.log(f"Spotify streaming initialized in {end_time - start_time:.2f} seconds.")
 

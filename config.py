@@ -4,7 +4,7 @@ IS_SECURE = False
 USER_ID = "meewhee"
 
 QUIET_MODE = False
-TYPE_MODE = False
+TYPE_MODE = True
 MICROPHONES = [
     "ReSpeaker 4 Mic Array",
     "MacBook Pro Microphone"

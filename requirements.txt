@@ -7,7 +7,7 @@ openwakeword
 peft==0.15.2
 PyAudio==0.2.14
 pydub==0.25.1
-pywebview==5.3.2
+selenium==4.28.1
 scipy==1.16.1
 torch==2.7.0
 torchaudio==2.7.0

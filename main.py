@@ -1,8 +1,7 @@
 import asyncio
 import websockets
 import json
-from speech import VoiceAssistant, DetectWakeWordProvider, ParakeetTranscriptionProvider, RequestClassifierBERT
-from voice import KokoroVoice, QuietAIVoice, ElevenLabsAIVoice
+
 import signal
 import os
 import threading
@@ -14,10 +13,10 @@ from tools.clock import LClockClient
 
 from sound import SoundManager, Sound
 
-if os.getenv("WEBVIEW_TYPE") != "pywebview":
-    from lucywebview import SeleniumLucyWebView
-else:
-    from lucywebview import LucyWebView
+from speech.detect_speech_provider.wake_word import DetectWakeWordProvider
+from speech.transcription_provider.parakeet import ParakeetTranscriptionProvider
+from speech.request_classifier.bert import RequestClassifierBERT
+from speech import VoiceAssistant
 
 voice = None
 lucy_webview = None
@@ -180,8 +179,9 @@ async def shutdown():
         print("[SYSTEM] Sound Manager stopped.")
 
     print("[SYSTEM] Closing WebSocket...")
-    await websocket.close()
-    await websocket.wait_closed()
+    if websocket != None:
+        await websocket.close()
+        await websocket.wait_closed()
     print("[SYSTEM] WebSocket closed.")
 
     # import threading
@@ -213,8 +213,10 @@ async def app():
     if os.getenv("QUIET_MODE") == "False":
         print_colored_log("Starting Voice...", "blue")
         if os.getenv("VOICE_SYSTEM") == "kokoro":
+            from voice.kokoro import KokoroVoice
             voice = KokoroVoice(speech_start_callback=on_assistant_start_speaking, speech_end_callback=on_assistant_end_speaking, speech_volume_callback=on_assistant_speech_volume)
         elif os.getenv("VOICE_SYSTEM") == "elevenlabs":
+            from voice.elevenlabs import ElevenLabsAIVoice
             voice = ElevenLabsAIVoice(
                 speech_start_callback=on_assistant_start_speaking, 
                 speech_end_callback=on_assistant_end_speaking,
@@ -225,6 +227,7 @@ async def app():
                 cache_dir="./elevenlabs_cache"
             )
     else:
+        from voice.quiet import QuietAIVoice
         voice = QuietAIVoice()
         print_colored_log("Quiet mode enabled. Skipping voice and microphone setup.", "yellow")
 
@@ -252,6 +255,7 @@ async def app():
         input_thread.start()
     else:
         print_colored_log("Starting Microphone...", "blue")
+
         detect_speech_provider = DetectWakeWordProvider(wake_word_detection_callback=on_user_start_speaking)
         transcription_provider = ParakeetTranscriptionProvider()
         request_classifier = RequestClassifierBERT()
@@ -287,6 +291,9 @@ def print_colored_log(message, str_color):
 
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv()
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
@@ -295,8 +302,10 @@ if __name__ == "__main__":
 
     print_colored_log("Starting Lucy WebView...", "blue")
     if os.getenv("WEBVIEW_TYPE") == "pywebview":
-        lucy_webview = LucyWebView(fullscreen=True)
+        from lucywebview.pywebview import PyLucyWebView
+        lucy_webview = PyLucyWebView(fullscreen=True)
     else:
+        from lucywebview.selenium import SeleniumLucyWebView
         lucy_webview = SeleniumLucyWebView(driver=os.getenv("WEBVIEW_TYPE"), fullscreen=True)
 
     try:

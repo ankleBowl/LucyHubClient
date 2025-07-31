@@ -1,6 +1,4 @@
 import multiprocessing
-import webview
-from webview.errors import JavascriptException
 import time
 import asyncio
 import os
@@ -8,12 +6,14 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-import logging
-logging.getLogger("pywebview").setLevel(logging.WARNING)
-
 
 class LucyWebView:
     def __init__(self, fullscreen=False):
+        import webview
+        from webview.errors import JavascriptException
+        import logging
+        logging.getLogger("pywebview").setLevel(logging.WARNING)
+
         self.queue = multiprocessing.Queue()
         self.response_queue = multiprocessing.Queue()
         self.fullscreen = multiprocessing.Value('b', fullscreen)

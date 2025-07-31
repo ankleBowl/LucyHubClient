@@ -5,6 +5,9 @@ import time
 import asyncio
 import os
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import logging
 logging.getLogger("pywebview").setLevel(logging.WARNING)
 

@@ -448,10 +448,6 @@ class KokoroVoice(AIVoice):
 
 
 if __name__ == "__main__":
-    # try elevenlabs voice if api key is set
-    # odyUrTN5HMVKujvVAgWW
-    import os
-    api_key = os.getenv("ELEVENLABS_API_KEY")
     
     voice = ElevenLabsAIVoice(speech_start_callback=lambda: print("Speech started"),
                                 speech_end_callback=lambda: print("Speech ended"),  

@@ -7,7 +7,6 @@ from voice import KokoroVoice, QuietAIVoice, ElevenLabsAIVoice
 import signal
 import os
 import threading
-import config
 import time
 
 from tools.lucy_client_module import LucyClientModule
@@ -31,7 +30,7 @@ close_websocket = False
 client_modules = {}
 
 def play_sound(sound_name):
-    if config.QUIET_MODE:
+    if os.getenv("QUIET_MODE") == "True":
         return
     sound = Sound.from_wav(f"sounds/{sound_name}.wav")
     sound_manager.add_sound(sound)
@@ -96,7 +95,7 @@ async def receive_messages():
 async def connect_socket():
     global ready
 
-    url = f"ws{config.get_url()}/v1/ws/{config.USER_ID}"
+    url = f"{os.getenv("LUCY_SERVER_WS_URL")}/v1/ws/{os.getenv("USER_ID")}"
     websocket = await websockets.connect(url)
     data = {"type": "auth"}
     await websocket.send(json.dumps(data))
@@ -207,23 +206,25 @@ async def app():
 
     print_colored_log("Connecting to WebSocket...", "blue")
 
-    if not config.QUIET_MODE:
+    if os.getenv("QUIET_MODE") == "False":
         print_colored_log("Starting Voice...", "blue")
-        voice = KokoroVoice(speech_start_callback=on_assistant_start_speaking, speech_end_callback=on_assistant_end_speaking, speech_volume_callback=on_assistant_speech_volume)
-        # voice = ElevenLabsAIVoice(
-        #     speech_start_callback=on_assistant_start_speaking, 
-        #     speech_end_callback=on_assistant_end_speaking,
-        #     speech_volume_callback=on_assistant_speech_volume,
-        #     api_key=os.getenv("ELEVENLABS_API_KEY"),
-        #     # voice_id="lcMyyd2HUfFzxdCaC4Ta",
-        #     voice_id="E393dkE75hqtz1LO2aEJ",
-        #     cache_dir="./elevenlabs_cache"
-        # )
+        if os.getenv("VOICE_SYSTEM") == "kokoro":
+            voice = KokoroVoice(speech_start_callback=on_assistant_start_speaking, speech_end_callback=on_assistant_end_speaking, speech_volume_callback=on_assistant_speech_volume)
+        elif os.getenv("VOICE_SYSTEM") == "elevenlabs":
+            voice = ElevenLabsAIVoice(
+                speech_start_callback=on_assistant_start_speaking, 
+                speech_end_callback=on_assistant_end_speaking,
+                speech_volume_callback=on_assistant_speech_volume,
+                api_key=os.getenv("ELEVENLABS_API_KEY"),
+                # voice_id="lcMyyd2HUfFzxdCaC4Ta",
+                voice_id="E393dkE75hqtz1LO2aEJ",
+                cache_dir="./elevenlabs_cache"
+            )
     else:
         voice = QuietAIVoice()
         print_colored_log("Quiet mode enabled. Skipping voice and microphone setup.", "yellow")
 
-    if config.TYPE_MODE:
+    if os.getenv("TYPE_MODE") == "True":
         def input_thread():
             global is_in_request, ready
 
@@ -253,7 +254,7 @@ async def app():
         va = VoiceAssistant(detect_speech_provider, 
                             transcription_provider,
                             request_classifier,
-                            mic_list=config.MICROPHONES,
+                            mic_list=os.getenv("MICROPHONES").split(","),
                             start_speaking_callback=None, 
                             end_speaking_callback=on_user_end_speaking)
         va.run()

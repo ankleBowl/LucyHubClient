@@ -97,19 +97,29 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
+from webdriver_manager.core.os_manager import ChromeType
 
 
 class SeleniumLucyWebView:
-    def __init__(self, driver="", fullscreen=False):
+    def __init__(self, driver, fullscreen=False):
         self.driver = None
-        if driver == "chrome":
+        if driver == "chrome" or driver == "chromium":
             options = webdriver.ChromeOptions()
             options.add_experimental_option("excludeSwitches", ['enable-automation']);
             if fullscreen:
                 options.add_argument("--kiosk")
-            self.driver = webdriver.Chrome(
-                options=options,
-                service=ChromeService(ChromeDriverManager().install()))
+            if driver == "chromium":
+                import shutil
+                if shutil.which("chromium-browser"):
+                    options.binary_location = shutil.which("chromium-browser")
+                else:
+                    options.binary_location = shutil.which("chromium")
+                self.driver = webdriver.Chrome(
+                    options=options)
+            else:
+                self.driver = webdriver.Chrome(
+                    options=options,
+                    service=ChromeService(ChromeDriverManager().install()))
             
         elif driver == "firefox":
             options = webdriver.FirefoxOptions()
@@ -154,7 +164,7 @@ class SeleniumLucyWebView:
         return False
 
 if __name__ == "__main__":
-    lucy_webview = SeleniumLucyWebView(driver="firefox", fullscreen=True)
+    lucy_webview = SeleniumLucyWebView(driver="chromium", fullscreen=True)
     while True:
         url = input("Enter URL to load in Lucy WebView (or 'exit' to quit): ")
         if url.lower() == 'exit':

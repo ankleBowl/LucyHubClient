@@ -10,3 +10,4 @@ temp_audio.wav
 venv/
 
 build/
+LucyHubClient.egg-info/

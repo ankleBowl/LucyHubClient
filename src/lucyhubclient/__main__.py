@@ -14,7 +14,7 @@ from .tools.lucy_client_module import LucyClientModule
 from .tools.spotify import LSpotifyClient
 from .tools.clock import LClockClient
 
-from .sound import SoundManager, Sound, ContinuousSound
+from .sound import SoundManager, Sound, SpeechSound
 
 from .speech.detect_speech_provider.wake_word import DetectWakeWordProvider
 from .speech import VoiceAssistant
@@ -24,9 +24,6 @@ va = None
 websocket = None
 main_loop = None
 sound_manager = SoundManager()
-speech_sound = ContinuousSound(sample_rate=24000)
-
-sound_manager.add_sound(speech_sound)
 
 last_request_sent = None
 is_in_request = True
@@ -68,7 +65,7 @@ async def receive_messages():
                 message = json.loads(message)
                 current_time = asyncio.get_event_loop().time()
 
-                print_colored_log(f"[{(current_time - last_request_sent):.2f}s] [SERVER] {message}", "yellow")
+                # print_colored_log(f"[{(current_time - last_request_sent):.2f}s] [SERVER] {message}", "yellow")
                 if message["type"] == "tool":
                     # print(f"Tool call: {message['data']}")
                     play_sound("use_tool")
@@ -84,8 +81,9 @@ async def receive_messages():
                 elif message["type"] == "end":
                     print_colored_log("[INFO] End of conversation detected.", "blue")
                     is_in_request = False
-                    set_lucy_webview_state("idle")
 
+                elif message["type"] == "speech_start":
+                    on_assistant_start_speaking()
                 elif message["type"] == "audio":
                     if get_config()["quiet_mode"]:
                         continue
@@ -173,6 +171,8 @@ def on_assistant_speech_volume(data):
     # print_colored_log(f"[INFO] Sending JS function: {js_func}", "blue")
     lucy_webview.run_javascript(js_func)
         
+speech_sound = SpeechSound(sample_rate=24000, volume_callback=on_assistant_speech_volume, done_speaking_callback=on_assistant_end_speaking)
+sound_manager.add_sound(speech_sound)
 
 async def shutdown():
     global va, voice, websocket, close_websocket
@@ -183,10 +183,6 @@ async def shutdown():
         print("[SYSTEM] Closing Voice Assistant...")
         va.stop()
         print("[SYSTEM] Voice Assistant closed.")
-    if voice:
-        print("[SYSTEM] Stopping Voice...")
-        voice.stop()
-        print("[SYSTEM] Voice stopped.")
     if sound_manager:
         print("[SYSTEM] Stopping Sound Manager...")
         sound_manager.stop()

@@ -126,6 +126,8 @@ class ContinuousSound(Sound):
         super().__init__(np.zeros((0, 2), dtype=np.int32))
         self.sample_rate = sample_rate
 
+        self.lock = threading.Lock()
+
     def add_audio_data(self, audio_data):
         if audio_data.ndim == 1:
             audio_data = np.stack((audio_data, audio_data), axis=-1)
@@ -135,17 +137,49 @@ class ContinuousSound(Sound):
         elif self.sample_rate == 16000:
             audio_data = np.repeat(audio_data, 3, axis=0)
 
-        self.audio_data = np.concatenate((self.audio_data, audio_data), axis=0)
+        with self.lock:
+            self.audio_data = np.concatenate((self.audio_data, audio_data), axis=0)
 
     def get_next(self, chunk_size):
-        next_chunk = super().get_next(chunk_size)
-        self.audio_data = self.audio_data[chunk_size:]
-        self.current_position = 0
-        return next_chunk
+        with self.lock:
+            next_chunk = super().get_next(chunk_size)
+            self.audio_data = self.audio_data[chunk_size:]
+            self.current_position = 0
+            return next_chunk
     
     def is_done_playing(self):
         return False
+    
+class SpeechSound(ContinuousSound):
+    def __init__(self, sample_rate=48000, volume_callback=None, done_speaking_callback=None):
+        super().__init__(sample_rate)
+        self.volume_callback = volume_callback
+        self.done_speaking_callback = done_speaking_callback
 
+        self.is_speaking = False
+
+    def add_audio_data(self, audio_data):
+        self.is_speaking = True
+        super().add_audio_data(audio_data)
+
+    def get_next(self, chunk_size):
+        next_chunk = super().get_next(chunk_size)
+
+        if self.volume_callback and self.is_speaking:
+            mono_next_chunk = next_chunk.mean(axis=1).astype(np.float32)
+            mono_next_chunk = mono_next_chunk / 32768 / 32768
+            window = np.hanning(1024)
+            audio_windowed = mono_next_chunk * window
+            fft_result = np.fft.rfft(audio_windowed)
+            magnitude = np.abs(fft_result)
+            magnitude_db = 20 * np.log10(magnitude + 1e-8)
+            self.volume_callback(magnitude_db)
+
+        if self.audio_data.shape[0] == 0 and self.done_speaking_callback and self.is_speaking:
+            self.is_speaking = False
+            self.done_speaking_callback()
+
+        return next_chunk
 
 class SoundManager:
     def __init__(self):

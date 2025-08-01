@@ -13,11 +13,14 @@ dependencies = [
     "torch==2.7.0",
     "torchaudio==2.7.0",
     "websockets",
-    "scipy"
+    "scipy",
+    "pyyaml"
 ]
 
 [tool.setuptools.package-data]
 "lucyhubclient.sounds" = ["*.wav"]
+"lucyhubclient.templates" = ["*.html"]
+"lucyhubclient.tools.clock_util" = ["*.wav"]
 
 
 [project.optional-dependencies]
@@ -25,16 +28,9 @@ dependencies = [
 ui_selenium = ["selenium", "webdriver_manager"]
 ui_pywebview = ["pywebview[qt]"]
 
-# Transcription Providers
-stt_parakeet = ["nemo_toolkit[asr]"]
-
 # Detect Speech Providers
 ds_vad = ["silero-vad"]
 ds_wakeword = ["openwakeword", "silero-vad"]
-
-# Request Classifiers
-rc_bert = ["transformers", "peft"]
-rc_none = []
 
 # Voice Providers
 tts_elevenlabs = ["elevenlabs"]

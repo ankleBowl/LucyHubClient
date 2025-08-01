@@ -124,7 +124,7 @@ class VoiceAssistant:
 
             # transcription = self.transcription_provider.transcribe(audio)
             # request_type = self.request_classifier.classify(transcription) if transcription else RequestType.NOT_QUERY
-            url = f'{get_config()["urls"]["http"]}/v1/audio/meewhee'
+            url = f'{get_config()["urls"]["http"]}/v1/meewhee/transcribe'
             response = requests.post(url, data=audio.tobytes(), headers={"Content-Type": "application/octet-stream"})
             response = response.json()
 
@@ -142,7 +142,7 @@ class VoiceAssistant:
             if request_type == RequestType.QUERY:        
                 self._generate_response(transcription, self.current_conversation_response_nonce, time.time())
             elif request_type == RequestType.INCOMPLETE_QUERY:
-                extra_time = 2
+                extra_time = 0
                 self.respond_thread = threading.Thread(target=self._generate_response, args=(transcription, self.current_conversation_response_nonce, time.time() + extra_time))
                 self.respond_thread.start()
             elif request_type == RequestType.NOT_QUERY:

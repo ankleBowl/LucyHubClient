@@ -2,6 +2,7 @@ from ..tools.lucy_client_module import LucyClientModule
 import os
 from scipy.io import wavfile
 import asyncio
+from importlib import resources
 
 from ..sound import Sound, LoopPlaybackModifier, FadeOutEffect, FadeInEffect
 
@@ -9,7 +10,7 @@ class LClockClient(LucyClientModule):
     def __init__(self):
         super().__init__("clock")
 
-        timer_audio_path = os.path.join(os.path.dirname(__file__), "clock", "alarm.wav")
+        timer_audio_path = resources.files("lucyhubclient.tools").joinpath("clock").joinpath("alarm.wav")
         if not os.path.exists(timer_audio_path):
             raise FileNotFoundError(f"Timer audio file not found at {timer_audio_path}")
         

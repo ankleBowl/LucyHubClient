@@ -1,0 +1,35 @@
+Metadata-Version: 2.4
+Name: LucyHubClient
+Version: 0.0.1a0
+Summary: A smart home hub client for LucyServer.
+Requires-Python: >=3.10
+Requires-Dist: asyncio
+Requires-Dist: websockets
+Requires-Dist: pyaudio
+Requires-Dist: numpy
+Requires-Dist: requests
+Requires-Dist: python-dotenv
+Requires-Dist: torch==2.7.0
+Requires-Dist: torchaudio==2.7.0
+Requires-Dist: websockets
+Requires-Dist: scipy
+Provides-Extra: ui-selenium
+Requires-Dist: selenium; extra == "ui-selenium"
+Requires-Dist: webdriver_manager; extra == "ui-selenium"
+Provides-Extra: ui-pywebview
+Requires-Dist: pywebview[qt]; extra == "ui-pywebview"
+Provides-Extra: stt-parakeet
+Requires-Dist: nemo_toolkit[asr]; extra == "stt-parakeet"
+Provides-Extra: ds-vad
+Requires-Dist: silero-vad; extra == "ds-vad"
+Provides-Extra: ds-wakeword
+Requires-Dist: openwakeword; extra == "ds-wakeword"
+Requires-Dist: silero-vad; extra == "ds-wakeword"
+Provides-Extra: rc-bert
+Requires-Dist: transformers; extra == "rc-bert"
+Requires-Dist: peft; extra == "rc-bert"
+Provides-Extra: rc-none
+Provides-Extra: tts-elevenlabs
+Requires-Dist: elevenlabs; extra == "tts-elevenlabs"
+Provides-Extra: tts-kokoro
+Requires-Dist: kokoro; extra == "tts-kokoro"

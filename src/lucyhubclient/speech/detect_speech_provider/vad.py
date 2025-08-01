@@ -45,5 +45,5 @@ class DetectSpeechSileroVADProvider:
         avg_speaking = np.mean(self.speaking_history)
         return avg_speaking < 0.7
     
-    def stop():
+    def stop(self):
         pass

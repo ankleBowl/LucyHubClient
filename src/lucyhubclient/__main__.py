@@ -144,6 +144,7 @@ def on_assistant_start_speaking():
 def on_assistant_end_speaking():
     lucy_webview.set_volume(0.5)
     sound_manager.set_volume(1.0)
+    set_lucy_webview_state("idle")
 
 
 def on_assistant_speech_volume(data):
@@ -293,8 +294,17 @@ def print_colored_log(message, str_color):
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dev", action="store_true", help="Run in development mode")
+    parser.add_argument("--webview-type", type=str, default="unset", help="Type of webview to use (pywebview or chromium)")
+    args = parser.parse_args()
+
     from dotenv import load_dotenv
     load_dotenv()
+
+
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -302,13 +312,17 @@ if __name__ == "__main__":
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown()))
 
+    webview_type = args.webview_type.lower()
+    if webview_type == "unset":
+        webview_type = os.getenv("WEBVIEW_TYPE", "pywebview")
+
     print_colored_log("Starting Lucy WebView...", "blue")
-    if os.getenv("WEBVIEW_TYPE") == "pywebview":
+    if webview_type == "pywebview":
         from .lucywebview.pywebview import PyLucyWebView
-        lucy_webview = PyLucyWebView(fullscreen=True)
+        lucy_webview = PyLucyWebView(fullscreen=not args.dev)
     else:
         from .lucywebview.selenium import SeleniumLucyWebView
-        lucy_webview = SeleniumLucyWebView(driver=os.getenv("WEBVIEW_TYPE"), fullscreen=True)
+        lucy_webview = SeleniumLucyWebView(driver=webview_type, fullscreen=not args.dev)
 
     try:
         loop.run_until_complete(app())

@@ -1,7 +1,7 @@
 from transformers import AutoTokenizer, BertForSequenceClassification
 from peft import PeftModel
 
-from speech import RequestType
+from ...speech import RequestType
 
 class RequestClassifierBERT:
     def __init__(self):

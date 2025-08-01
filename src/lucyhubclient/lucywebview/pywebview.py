@@ -2,6 +2,7 @@ import multiprocessing
 import time
 import asyncio
 import os
+from importlib import resources
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -25,7 +26,8 @@ class PyLucyWebView:
         self.url = ""
 
     def start(self):
-        index_path = "file://" + os.path.abspath("templates/index.html")
+        index_path = resources.files("lucyhubclient.templates").joinpath("index.html")
+        index_path = "file://" + os.path.abspath(index_path)
         if self.fullscreen.value:
             webview.create_window("Lucy WebView", index_path, fullscreen=True, resizable=False, confirm_close=False)
         else:

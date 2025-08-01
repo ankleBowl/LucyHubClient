@@ -1,5 +1,5 @@
 import json
-from sound import SoundManager
+from ..sound import SoundManager
 
 class LucyClientModule:
     websocket = None

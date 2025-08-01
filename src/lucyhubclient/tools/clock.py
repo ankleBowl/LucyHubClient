@@ -1,11 +1,9 @@
-from tools.lucy_client_module import LucyClientModule
+from ..tools.lucy_client_module import LucyClientModule
 import os
 from scipy.io import wavfile
 import asyncio
-import pyaudio
-import threading
 
-from sound import Sound, LoopPlaybackModifier, FadeOutEffect, FadeInEffect
+from ..sound import Sound, LoopPlaybackModifier, FadeOutEffect, FadeInEffect
 
 class LClockClient(LucyClientModule):
     def __init__(self):

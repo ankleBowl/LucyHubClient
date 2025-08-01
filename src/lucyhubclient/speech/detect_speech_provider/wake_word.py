@@ -5,7 +5,7 @@ import threading
 import time
 import numpy as np
 
-from speech.detect_speech_provider.vad import DetectSpeechSileroVADProvider
+from ...speech.detect_speech_provider.vad import DetectSpeechSileroVADProvider
 
 class DetectWakeWordProvider(DetectSpeechSileroVADProvider):
     def __init__(self, wake_word="alexa", wake_word_detection_callback=None):

@@ -6,17 +6,18 @@ import signal
 import os
 import threading
 import time
+from importlib import resources
 
-from tools.lucy_client_module import LucyClientModule
-from tools.spotify import LSpotifyClient
-from tools.clock import LClockClient
+from .tools.lucy_client_module import LucyClientModule
+from .tools.spotify import LSpotifyClient
+from .tools.clock import LClockClient
 
-from sound import SoundManager, Sound
+from .sound import SoundManager, Sound
 
-from speech.detect_speech_provider.wake_word import DetectWakeWordProvider
-from speech.transcription_provider.parakeet import ParakeetTranscriptionProvider
-from speech.request_classifier.bert import RequestClassifierBERT
-from speech import VoiceAssistant
+from .speech.detect_speech_provider.wake_word import DetectWakeWordProvider
+from .speech.transcription_provider.parakeet import ParakeetTranscriptionProvider
+from .speech.request_classifier.none import EmptyRequestClassifier
+from .speech import VoiceAssistant
 
 voice = None
 lucy_webview = None
@@ -35,7 +36,8 @@ client_modules = {}
 def play_sound(sound_name):
     if os.getenv("QUIET_MODE") == "True":
         return
-    sound = Sound.from_wav(f"sounds/{sound_name}.wav")
+    sound_path = resources.files("lucyhubclient.sounds").joinpath(f"{sound_name}.wav")
+    sound = Sound.from_wav(sound_path)
     sound_manager.add_sound(sound)
 
 async def receive_messages():
@@ -98,7 +100,7 @@ async def receive_messages():
 async def connect_socket():
     global ready
 
-    url = f"{os.getenv("LUCY_SERVER_WS_URL")}/v1/ws/{os.getenv("USER_ID")}"
+    url = f"{os.getenv('LUCY_SERVER_WS_URL')}/v1/ws/{os.getenv('USER_ID')}"
     websocket = await websockets.connect(url)
     data = {"type": "auth"}
     await websocket.send(json.dumps(data))
@@ -213,10 +215,10 @@ async def app():
     if os.getenv("QUIET_MODE") == "False":
         print_colored_log("Starting Voice...", "blue")
         if os.getenv("VOICE_SYSTEM") == "kokoro":
-            from voice.kokoro import KokoroVoice
+            from .voice.kokoro import KokoroVoice
             voice = KokoroVoice(speech_start_callback=on_assistant_start_speaking, speech_end_callback=on_assistant_end_speaking, speech_volume_callback=on_assistant_speech_volume)
         elif os.getenv("VOICE_SYSTEM") == "elevenlabs":
-            from voice.elevenlabs import ElevenLabsAIVoice
+            from .voice.elevenlabs import ElevenLabsAIVoice
             voice = ElevenLabsAIVoice(
                 speech_start_callback=on_assistant_start_speaking, 
                 speech_end_callback=on_assistant_end_speaking,
@@ -258,7 +260,7 @@ async def app():
 
         detect_speech_provider = DetectWakeWordProvider(wake_word_detection_callback=on_user_start_speaking)
         transcription_provider = ParakeetTranscriptionProvider()
-        request_classifier = RequestClassifierBERT()
+        request_classifier = EmptyRequestClassifier()
         va = VoiceAssistant(detect_speech_provider, 
                             transcription_provider,
                             request_classifier,
@@ -302,10 +304,10 @@ if __name__ == "__main__":
 
     print_colored_log("Starting Lucy WebView...", "blue")
     if os.getenv("WEBVIEW_TYPE") == "pywebview":
-        from lucywebview.pywebview import PyLucyWebView
+        from .lucywebview.pywebview import PyLucyWebView
         lucy_webview = PyLucyWebView(fullscreen=True)
     else:
-        from lucywebview.selenium import SeleniumLucyWebView
+        from .lucywebview.selenium import SeleniumLucyWebView
         lucy_webview = SeleniumLucyWebView(driver=os.getenv("WEBVIEW_TYPE"), fullscreen=True)
 
     try:

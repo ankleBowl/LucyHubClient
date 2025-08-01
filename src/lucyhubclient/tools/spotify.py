@@ -1,4 +1,4 @@
-from tools.lucy_client_module import LucyClientModule
+from ..tools.lucy_client_module import LucyClientModule
 import asyncio
 import os
 

@@ -5,6 +5,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
 from webdriver_manager.core.os_manager import ChromeType
 
+from importlib import resources
+
 import os
 import asyncio
 
@@ -40,7 +42,8 @@ class SeleniumLucyWebView:
                 service=FirefoxService(GeckoDriverManager().install()))
             self.driver.fullscreen_window()
 
-        index_path = "file://" + os.path.abspath("templates/index.html")
+        index_path = resources.files("lucyhubclient.templates").joinpath("index.html")
+        index_path = "file://" + os.path.abspath(index_path)
         self.show_url(index_path)
 
     def show_url(self, url):

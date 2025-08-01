@@ -1,0 +1,41 @@
+[project]
+name = "LucyHubClient"
+version = "0.0.1a"
+description = "A smart home hub client for LucyServer."
+requires-python = ">=3.10"
+dependencies = [
+    "asyncio",
+    "websockets",
+    "json",
+    "pyaudio",
+    "numpy",
+    "requests",
+    "python-dotenv",
+    "torch==2.7.0",
+    "torchaudio==2.7.0",
+    "websockets"
+]
+
+[tool.setuptools.package-data]
+"lucyhubclient.sounds" = ["*.wav"]
+
+
+[project.optional-dependencies]
+# UI Providers
+ui_selenium = ["selenium", "webdriver_manager"]
+ui_pywebview = ["pywebview[qt]"]
+
+# Transcription Providers
+stt_parakeet = ["nemo_toolkit[asr]"]
+
+# Detect Speech Providers
+ds_vad = ["silero-vad"]
+ds_wakeword = ["openwakeword", "silero-vad"]
+
+# Request Classifiers
+rc_bert = ["transformers", "peft"]
+rc_none = []
+
+# Voice Providers
+tts_elevenlabs = ["elevenlabs"]
+tts_kokoro = ["kokoro"]

@@ -17,3 +17,6 @@ class ParakeetTranscriptionProvider:
         if len(text) <= 10:
             return None
         return text
+    
+    def stop(self):
+        pass

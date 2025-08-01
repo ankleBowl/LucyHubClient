@@ -34,7 +34,7 @@ close_websocket = False
 client_modules = {}
 
 def play_sound(sound_name):
-    if os.getenv("QUIET_MODE") == "True":
+    if get_config()["quiet_mode"] == "True":
         return
     sound_path = resources.files("lucyhubclient.sounds").joinpath(f"{sound_name}.wav")
     sound = Sound.from_wav(sound_path)
@@ -100,7 +100,7 @@ async def receive_messages():
 async def connect_socket():
     global ready
 
-    url = f"{os.getenv('LUCY_SERVER_WS_URL')}/v1/ws/{os.getenv('USER_ID')}"
+    url = f'{get_config()["urls"]["ws"]}/v1/ws/meewhee'
     websocket = await websockets.connect(url)
     data = {"type": "auth"}
     await websocket.send(json.dumps(data))
@@ -213,18 +213,18 @@ async def app():
 
     print_colored_log("Connecting to WebSocket...", "blue")
 
-    if os.getenv("QUIET_MODE") == "False":
+    if get_config()["quiet_mode"] == False:
         print_colored_log("Starting Voice...", "blue")
-        if os.getenv("VOICE_SYSTEM") == "kokoro":
+        if get_config()["voice_system"] == "kokoro":
             from .voice.kokoro import KokoroVoice
             voice = KokoroVoice(speech_start_callback=on_assistant_start_speaking, speech_end_callback=on_assistant_end_speaking, speech_volume_callback=on_assistant_speech_volume)
-        elif os.getenv("VOICE_SYSTEM") == "elevenlabs":
+        elif get_config()["voice_system"] == "elevenlabs":
             from .voice.elevenlabs import ElevenLabsAIVoice
             voice = ElevenLabsAIVoice(
                 speech_start_callback=on_assistant_start_speaking, 
                 speech_end_callback=on_assistant_end_speaking,
                 speech_volume_callback=on_assistant_speech_volume,
-                api_key=os.getenv("ELEVENLABS_API_KEY"),
+                api_key=get_config()["elevenlabs_api_key"],
                 # voice_id="lcMyyd2HUfFzxdCaC4Ta",
                 voice_id="E393dkE75hqtz1LO2aEJ",
                 cache_dir="./elevenlabs_cache"
@@ -234,7 +234,7 @@ async def app():
         voice = QuietAIVoice()
         print_colored_log("Quiet mode enabled. Skipping voice and microphone setup.", "yellow")
 
-    if os.getenv("TYPE_MODE") == "True":
+    if get_config()["type_mode"] == "True":
         def input_thread():
             global is_in_request, ready
 
@@ -265,7 +265,7 @@ async def app():
         va = VoiceAssistant(detect_speech_provider, 
                             transcription_provider,
                             request_classifier,
-                            mic_list=os.getenv("MICROPHONES").split(","),
+                            mic_list=get_config()["microphones"],
                             start_speaking_callback=None, 
                             end_speaking_callback=on_user_end_speaking)
         va.run()
@@ -295,16 +295,11 @@ def print_colored_log(message, str_color):
 
 if __name__ == "__main__":
     import argparse
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--dev", action="store_true", help="Run in development mode")
-    parser.add_argument("--webview-type", type=str, default="unset", help="Type of webview to use (pywebview or chromium)")
     args = parser.parse_args()
 
-    from dotenv import load_dotenv
-    load_dotenv()
-
-
+    from .config import get_config
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -312,17 +307,13 @@ if __name__ == "__main__":
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown()))
 
-    webview_type = args.webview_type.lower()
-    if webview_type == "unset":
-        webview_type = os.getenv("WEBVIEW_TYPE", "pywebview")
-
     print_colored_log("Starting Lucy WebView...", "blue")
-    if webview_type == "pywebview":
+    if get_config()["webview_type"] == "pywebview":
         from .lucywebview.pywebview import PyLucyWebView
         lucy_webview = PyLucyWebView(fullscreen=not args.dev)
     else:
         from .lucywebview.selenium import SeleniumLucyWebView
-        lucy_webview = SeleniumLucyWebView(driver=webview_type, fullscreen=not args.dev)
+        lucy_webview = SeleniumLucyWebView(driver=get_config()["webview_type"], fullscreen=not args.dev)
 
     try:
         loop.run_until_complete(app())

@@ -121,6 +121,32 @@ class Sound:
                 return True
         return self.current_position >= len(self.audio_data)
 
+class ContinuousSound(Sound):
+    def __init__(self, sample_rate):
+        super().__init__(np.zeros((0, 2), dtype=np.int32))
+        self.sample_rate = sample_rate
+
+    def add_audio_data(self, audio_data):
+        if audio_data.ndim == 1:
+            audio_data = np.stack((audio_data, audio_data), axis=-1)
+
+        if self.sample_rate == 24000:
+            audio_data = np.repeat(audio_data, 2, axis=0)
+        elif self.sample_rate == 16000:
+            audio_data = np.repeat(audio_data, 3, axis=0)
+
+        self.audio_data = np.concatenate((self.audio_data, audio_data), axis=0)
+
+    def get_next(self, chunk_size):
+        next_chunk = super().get_next(chunk_size)
+        self.audio_data = self.audio_data[chunk_size:]
+        self.current_position = 0
+        return next_chunk
+    
+    def is_done_playing(self):
+        return False
+
+
 class SoundManager:
     def __init__(self):
         self.p = pyaudio.PyAudio()

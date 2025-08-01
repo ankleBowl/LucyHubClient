@@ -6,23 +6,27 @@ import signal
 import os
 import threading
 import time
+import base64
+import numpy as np
 from importlib import resources
 
 from .tools.lucy_client_module import LucyClientModule
 from .tools.spotify import LSpotifyClient
 from .tools.clock import LClockClient
 
-from .sound import SoundManager, Sound
+from .sound import SoundManager, Sound, ContinuousSound
 
 from .speech.detect_speech_provider.wake_word import DetectWakeWordProvider
 from .speech import VoiceAssistant
 
-voice = None
 lucy_webview = None
 va = None
 websocket = None
 main_loop = None
 sound_manager = SoundManager()
+speech_sound = ContinuousSound(sample_rate=24000)
+
+sound_manager.add_sound(speech_sound)
 
 last_request_sent = None
 is_in_request = True
@@ -59,7 +63,6 @@ async def receive_messages():
 
         while True:
             try:
-                # message = await websocket.recv()
                 message = await asyncio.wait_for(websocket.recv(), timeout=0.1)
 
                 message = json.loads(message)
@@ -74,16 +77,26 @@ async def receive_messages():
                     play_sound("complete")
                     lucy_webview.set_volume(0.1)
                     sound_manager.set_volume(0.1)
-                    voice.generate_blocking(message["data"])
                 elif message["type"] == "tool_message":
                     if message["tool"] in client_modules:
                         module = client_modules[message["tool"]]
                         await module.handle_message(message["data"])
-                    
                 elif message["type"] == "end":
                     print_colored_log("[INFO] End of conversation detected.", "blue")
                     is_in_request = False
                     set_lucy_webview_state("idle")
+
+                elif message["type"] == "audio":
+                    if get_config()["quiet_mode"]:
+                        continue
+
+                    base64_data = message["data"]
+                    audio_data = base64.b64decode(base64_data)
+                    audio_array = np.frombuffer(audio_data, dtype=np.float32)
+                    audio_array = (audio_array * 32767 * 32767).astype(np.int32)
+
+                    speech_sound.add_audio_data(audio_array)
+
             except asyncio.TimeoutError:
                 if close_websocket:
                     break
@@ -211,28 +224,7 @@ async def app():
 
     print_colored_log("Connecting to WebSocket...", "blue")
 
-    if get_config()["quiet_mode"] == False:
-        print_colored_log("Starting Voice...", "blue")
-        if get_config()["voice_system"] == "kokoro":
-            from .voice.kokoro import KokoroVoice
-            voice = KokoroVoice(speech_start_callback=on_assistant_start_speaking, speech_end_callback=on_assistant_end_speaking, speech_volume_callback=on_assistant_speech_volume)
-        elif get_config()["voice_system"] == "elevenlabs":
-            from .voice.elevenlabs import ElevenLabsAIVoice
-            voice = ElevenLabsAIVoice(
-                speech_start_callback=on_assistant_start_speaking, 
-                speech_end_callback=on_assistant_end_speaking,
-                speech_volume_callback=on_assistant_speech_volume,
-                api_key=get_config()["elevenlabs_api_key"],
-                # voice_id="lcMyyd2HUfFzxdCaC4Ta",
-                voice_id="E393dkE75hqtz1LO2aEJ",
-                cache_dir="./elevenlabs_cache"
-            )
-    else:
-        from voice.quiet import QuietAIVoice
-        voice = QuietAIVoice()
-        print_colored_log("Quiet mode enabled. Skipping voice and microphone setup.", "yellow")
-
-    if get_config()["type_mode"] == "True":
+    if get_config()["type_mode"] == True:
         def input_thread():
             global is_in_request, ready
 
@@ -291,6 +283,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--dev", action="store_true", help="Run in development mode")
+    parser.add_argument("--lucy-server-addr", type=str, default="http://localhost:8000", help="Address of the Lucy server")
+    parser.add_argument("--lucy-server-ws-addr", type=str, default="ws://localhost:8000", help="WebSocket address of the Lucy server")
     args = parser.parse_args()
 
     from .config import get_config

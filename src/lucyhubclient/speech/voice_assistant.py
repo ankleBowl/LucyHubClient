@@ -1,6 +1,9 @@
 import pyaudio
 import threading
 import time
+import requests
+
+from ..config import get_config
 
 class RequestType(str):
     QUERY = "query"
@@ -8,7 +11,7 @@ class RequestType(str):
     INCOMPLETE_QUERY = "incomplete_query"
 
 class VoiceAssistant:
-    def __init__(self, detect_speech_provider, transcription_provider, request_classifier, mic_list=[], start_speaking_callback=None, end_speaking_callback=None):
+    def __init__(self, detect_speech_provider, mic_list=[], start_speaking_callback=None, end_speaking_callback=None):
         self.CHUNKSIZE = 1536
         self.SAMPLERATE = 16000
 
@@ -41,9 +44,7 @@ class VoiceAssistant:
         self.start_speaking_callback = start_speaking_callback
         self.end_speaking_callback = end_speaking_callback
 
-        self.transcription_provider = transcription_provider
         self.detect_speech_provider = detect_speech_provider
-        self.request_classifier = request_classifier
 
         self.is_closing = False
 
@@ -120,8 +121,22 @@ class VoiceAssistant:
             audio = self.detect_speech_provider.get_audio()
             if len(audio) < self.SAMPLERATE * 0.25:
                 continue
-            transcription = self.transcription_provider.transcribe(audio)
-            request_type = self.request_classifier.classify(transcription) if transcription else RequestType.NOT_QUERY
+
+            # transcription = self.transcription_provider.transcribe(audio)
+            # request_type = self.request_classifier.classify(transcription) if transcription else RequestType.NOT_QUERY
+            url = f'{get_config()["urls"]["http"]}/v1/audio/meewhee'
+            response = requests.post(url, data=audio.tobytes(), headers={"Content-Type": "application/octet-stream"})
+            response = response.json()
+
+            transcription = response["transcription"]
+            request_type = response["classification"]
+
+            if request_type == "query":
+                request_type = RequestType.QUERY
+            elif request_type == "not_query":
+                request_type = RequestType.NOT_QUERY
+            elif request_type == "incomplete_query":
+                request_type = RequestType.INCOMPLETE_QUERY
 
             print(f"[TRANSCRIPTION] {transcription} (request_type={request_type})")
             if request_type == RequestType.QUERY:        
@@ -155,9 +170,6 @@ class VoiceAssistant:
 
         print("[AUDIO] Closing VAD provider")
         self.detect_speech_provider.stop()
-
-        print("[AUDIO] Closing transcription provider")
-        self.transcription_provider.stop()
 
         print("[AUDIO] Stopped")
     

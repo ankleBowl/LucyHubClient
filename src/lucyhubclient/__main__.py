@@ -15,8 +15,6 @@ from .tools.clock import LClockClient
 from .sound import SoundManager, Sound
 
 from .speech.detect_speech_provider.wake_word import DetectWakeWordProvider
-from .speech.transcription_provider.parakeet import ParakeetTranscriptionProvider
-from .speech.request_classifier.none import EmptyRequestClassifier
 from .speech import VoiceAssistant
 
 voice = None
@@ -260,11 +258,7 @@ async def app():
         print_colored_log("Starting Microphone...", "blue")
 
         detect_speech_provider = DetectWakeWordProvider(wake_word_detection_callback=on_user_start_speaking)
-        transcription_provider = ParakeetTranscriptionProvider()
-        request_classifier = EmptyRequestClassifier()
         va = VoiceAssistant(detect_speech_provider, 
-                            transcription_provider,
-                            request_classifier,
                             mic_list=get_config()["microphones"],
                             start_speaking_callback=None, 
                             end_speaking_callback=on_user_end_speaking)

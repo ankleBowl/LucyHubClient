@@ -1,7 +1,7 @@
 from ..tools.lucy_client_module import LucyClientModule
 import asyncio
 import os
-from ..config import get_config
+from ..config import get_http_url
 
 class LSpotifyClient(LucyClientModule):
     def __init__(self):
@@ -11,7 +11,7 @@ class LSpotifyClient(LucyClientModule):
         if message["message"] == "INIT_SPOTIFY_STREAMING":
             self.log("Initializing Spotify streaming...")
             start_time = asyncio.get_event_loop().time()
-            url = f'{get_config()["urls"]["http"]}/v1/meewhee/module/spotify/web_player'
+            url = f'{get_http_url()}/v1/meewhee/module/spotify/web_player'
             iframe_url = self.lucy_webview.run_javascript(f"LucyHub.getIFrameURL()")
             print(f"Current iframe URL: {iframe_url}")
             if iframe_url != url:

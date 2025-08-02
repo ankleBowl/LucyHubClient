@@ -271,8 +271,58 @@
             z-index: -1;
         }
     </style>
+    <style>
+        .not-connected-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 10;
+
+            background-color: rgba(200, 200, 200, 0.25);
+            backdrop-filter: blur(10px);
+
+            font-family: 'filson-pro', sans-serif;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            
+        }
+
+        .not-connected-overlay > div {
+            max-width: 700px;
+            text-align: center;
+            
+        }
+
+        .not-connected-overlay p {
+            font-size: 1.5em;
+        }
+
+        #ip-qr {
+            width: 200px;
+            height: 200px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            margin: 20px 0;
+        }
+    </style>
 </head>
 <body class="">
+    <div class="not-connected-overlay">
+        <div>
+            <p><b>LucyHub is not currently connected to the server.</b></p>
+            <p>Please ensure that LucyServer is running and available. Configuration can be modified at:</p>
+            <br>
+            <img id="ip-qr">
+            <p id="ip-addr"><b>{IP_ADDR}</b></p>
+            <br>
+            <p>Copyright 2025 - Lye Software Inc</p>
+        </div>
+    </div>
+
     <div class="lucy-indicators not-ready">
         <div></div>
         <div></div>
@@ -306,6 +356,15 @@
     let currentState = 'not-ready';
 
     window.LucyHub = {
+        setConnected: (isConnected, ipAddr="", qrBase64="") => {
+            const overlay = document.querySelector('.not-connected-overlay');
+            overlay.style.opacity = isConnected ? '0' : '1';
+            overlay.style.pointerEvents = isConnected ? 'none' : 'auto';
+
+            document.getElementById('ip-addr').textContent = ipAddr;
+            document.getElementById('ip-qr').src = `data:image/png;base64,${qrBase64}`;
+
+        },
         setState: (state) => {
             restoreLucyIndicators();
             currentState = state;

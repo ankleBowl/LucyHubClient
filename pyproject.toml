@@ -9,7 +9,6 @@ dependencies = [
     "pyaudio",
     "numpy",
     "requests",
-
     "torch==2.7.0",
     "torchaudio==2.7.0",
     "websockets",
@@ -18,7 +17,9 @@ dependencies = [
     "openwakeword",
     "silero-vad",
     "selenium",
-    "webdriver_manager"
+    "webdriver_manager",
+    "flask",
+    "qrcode[pil]",
 ]
 
 [tool.setuptools.package-data]

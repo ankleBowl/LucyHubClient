@@ -1,9 +1,10 @@
 import asyncio
 import websockets
 import json
+import socket
+import qrcode
 
 import signal
-import os
 import threading
 import time
 import base64
@@ -32,6 +33,24 @@ close_websocket = False
 
 client_modules = {}
 
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Doesn't need to be reachable, just forces routing table use
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
+    finally:
+        s.close()
+
+local_ip = get_local_ip()
+qr_img = qrcode.make(f"http://{local_ip}:4812")
+import base64
+from io import BytesIO
+buffer = BytesIO()
+qr_img.save(buffer, format="PNG")
+qr_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+
 def play_sound(sound_name):
     if get_config()["quiet_mode"] == "True":
         return
@@ -50,11 +69,12 @@ async def receive_messages():
             
         try:
             websocket = await connect_socket()
+            lucy_webview.run_javascript("LucyHub.setConnected(true)")
             set_lucy_webview_state("idle")
             ready = True
             LucyClientModule.websocket = websocket
         except Exception as e:
-            print_colored_log(f"[ERROR] Failed to connect to WebSocket: {e}", "red")
+            lucy_webview.run_javascript(f"LucyHub.setConnected(false, '{get_local_ip()}:4812', '{qr_base64}')")
             await asyncio.sleep(1)
             continue
 
@@ -109,7 +129,7 @@ async def receive_messages():
 async def connect_socket():
     global ready
 
-    url = f'{get_config()["urls"]["ws"]}/v1/ws/meewhee'
+    url = f'{get_ws_url()}/v1/ws/meewhee'
     websocket = await websockets.connect(url)
     data = {"type": "auth"}
     await websocket.send(json.dumps(data))
@@ -283,7 +303,7 @@ if __name__ == "__main__":
     parser.add_argument("--lucy-server-ws-addr", type=str, default="ws://localhost:8000", help="WebSocket address of the Lucy server")
     args = parser.parse_args()
 
-    from .config import get_config
+    from .config import get_config, get_ws_url, start_flask_server
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -294,6 +314,9 @@ if __name__ == "__main__":
     print_colored_log("Starting Lucy WebView...", "blue")
     from .selenium import SeleniumLucyWebView
     lucy_webview = SeleniumLucyWebView(driver=get_config()["webview_type"], fullscreen=not args.dev)
+    lucy_webview.run_javascript(f"LucyHub.setConnected(false, '{get_local_ip()}:4812')")
+    
+    start_flask_server()
 
     try:
         loop.run_until_complete(app())

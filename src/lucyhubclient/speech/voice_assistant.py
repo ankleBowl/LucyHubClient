@@ -3,7 +3,8 @@ import threading
 import time
 import requests
 
-from ..config import get_config
+from ..config import get_http_url
+from enum import Enum
 
 class RequestType(str):
     QUERY = "query"
@@ -124,7 +125,7 @@ class VoiceAssistant:
 
             # transcription = self.transcription_provider.transcribe(audio)
             # request_type = self.request_classifier.classify(transcription) if transcription else RequestType.NOT_QUERY
-            url = f'{get_config()["urls"]["http"]}/v1/meewhee/transcribe'
+            url = f'{get_http_url()}/v1/meewhee/transcribe'
             response = requests.post(url, data=audio.tobytes(), headers={"Content-Type": "application/octet-stream"})
             response = response.json()
 

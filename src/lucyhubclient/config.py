@@ -2,118 +2,120 @@ import os
 import yaml
 from pathlib import Path
 
-# GEMINI WROTE THIS BECAUSE I AM SO SICK OF WRITING CONFIG LOADING CODE
-
-# Define the default configuration structure as the schema
-# This dictionary serves as the blueprint for what the config.yaml should contain.
-# It also provides initial values if a template file needs to be generated.
 DEFAULT_CONFIG_SCHEMA = {
-    "urls": {
-        "http": "http://localhost:8000",
-        "ws": "ws://localhost:8000",
-    },
+    "url": "localhost:8000",
+    "is_secure": False,
     "quiet_mode": False,
     "type_mode": False,
     "microphones": [],
-    "webview_type": "pywebview",
-    "voice_system": "kokoro",
-    "elevenlabs_api_key": "",
+    "webview_type": "chrome",
 }
-
-# Define the path where the configuration file will be stored
-# It expands to a full path like /home/youruser/lucyclient/config.yaml
 CONFIG_DIR = Path(os.path.expanduser("~/lucyclient"))
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 
-# Global variable to store the loaded configuration
-# This will be populated by load_config() and can be accessed by get_config()
 _APP_CONFIG = None
 
+def save_empty_config():
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    with open(CONFIG_FILE, 'w') as f:
+        yaml.dump(DEFAULT_CONFIG_SCHEMA, f, indent=4, sort_keys=False)
+
 def load_config():
-    """
-    Loads the configuration from CONFIG_FILE.
-    If the file doesn't exist, it creates a template file with default values.
-    It strictly validates against the schema, raising an error if any key is missing.
-    The loaded configuration is stored in the module-level variable _APP_CONFIG.
-    """
-    global _APP_CONFIG # Declare intent to modify the global variable
+    global _APP_CONFIG
 
     if not CONFIG_FILE.exists():
-        print(f"Configuration file not found at '{CONFIG_FILE}'.")
-        print("Generating a template config.yaml with default values.")
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        with open(CONFIG_FILE, 'w') as f:
-            yaml.dump(DEFAULT_CONFIG_SCHEMA, f, indent=4, sort_keys=False)
-        print(f"Template config.yaml created at '{CONFIG_FILE}'.")
-        print("Please review and populate the configuration file.")
-        # Raise an error to indicate that the user needs to populate the config
-        raise FileNotFoundError(
-            f"Configuration file '{CONFIG_FILE}' was just created. "
-            "Please populate it with your settings and re-run the application."
-        )
+        save_empty_config() 
 
     try:
         with open(CONFIG_FILE, 'r') as f:
             config = yaml.safe_load(f)
-        if config is None: # Handle empty YAML file
-            config = {}
+        if config is None:
+            save_empty_config()
+            config = DEFAULT_CONFIG_SCHEMA.copy() 
 
-        _APP_CONFIG = config # Store the loaded config in the global variable
+        _APP_CONFIG = config
         print(f"Configuration loaded successfully from '{CONFIG_FILE}'.")
-        return _APP_CONFIG # Also return it for immediate use if desired
-
+        return _APP_CONFIG
     except yaml.YAMLError as e:
         raise ValueError(f"Error parsing YAML configuration file '{CONFIG_FILE}': {e}")
-    except KeyError as e:
-        # Re-raise the KeyError from validation directly
-        raise e
-    except TypeError as e:
-        # Re-raise the TypeError from validation directly
-        raise e
     except Exception as e:
         raise RuntimeError(f"An unexpected error occurred while loading config: {e}")
 
 def get_config():
-    """
-    Returns the globally loaded application configuration.
-    If the configuration has not been loaded yet, it attempts to load it.
-    """
     global _APP_CONFIG
     if _APP_CONFIG is None:
-        print("Configuration not yet loaded. Attempting to load now...")
-        _APP_CONFIG = load_config() # Attempt to load if not already loaded
+        _APP_CONFIG = load_config()
     return _APP_CONFIG
 
-# --- Example Usage ---
-if __name__ == "__main__":
-    try:
-        # Attempt to load the configuration
-        # You can call load_config() once at the start of your application
-        # or rely on get_config() to lazily load it.
-        app_config_main = load_config() # This will populate _APP_CONFIG
+def write_config():
+    with open(CONFIG_FILE, 'w') as f:
+        yaml.dump(_APP_CONFIG, f, indent=4, sort_keys=False)
 
-        # Now, from any other file, you can import get_config and use it:
-        # from config_manager import get_config
-        # my_config = get_config()
+def get_http_url():
+    config = get_config()
+    if config["is_secure"]:
+        return f"https://{config['url']}"
+    else:
+        return f"http://{config['url']}"
+    
+def get_ws_url():
+    config = get_config()
+    if config["is_secure"]:
+        return f"wss://{config['url']}"
+    else:
+        return f"ws://{config['url']}"
 
-        print("\n--- Loaded Configuration (via app_config_main) ---")
-        print(f"HTTP URL: {app_config_main['urls']['http']}")
-        print(f"WS URL: {app_config_main['urls']['ws']}")
 
-        print("\n--- Loaded Configuration (via get_config()) ---")
-        retrieved_config = get_config()
-        print(f"Quiet Mode: {retrieved_config['quiet_mode']}")
-        print(f"Voice System: {retrieved_config['voice_system']}")
-        print(f"ElevenLabs API Key (first 5 chars): {retrieved_config['elevenlabs_api_key'][:5]}...")
 
-        # Example of how a missing key would cause an error if you manually
-        # remove a key from config.yaml after it's generated.
-        # Uncomment the following line and remove 'type_mode' from your config.yaml
-        # to see the KeyError in action.
-        # print(f"Type Mode: {app_config['type_mode_missing_key']}")
+from flask import Flask, request, jsonify
+import threading
+from importlib import resources
 
-    except (FileNotFoundError, ValueError, KeyError, TypeError, RuntimeError) as e:
-        print(f"\nError: {e}")
-        print("Please ensure your config.yaml is correctly formatted and contains all required keys.")
-        print(f"Refer to the schema: {DEFAULT_CONFIG_SCHEMA}")
+app = Flask(__name__)
 
+@app.route('/')
+def index():
+    file = resources.files('lucyhubclient.templates') / 'config.html'
+    with open(file, 'r') as f:
+        return f.read()
+    
+@app.route('/get_config')
+def get_config_route():
+    return jsonify(get_config())
+
+@app.route('/set_server_address', methods=['POST'])
+def set_server_address():
+    data = request.json
+    _APP_CONFIG['url'] = data['server_address']
+    _APP_CONFIG['is_secure'] = data['is_secure']
+    write_config()
+    return jsonify({"status": "success"})
+
+@app.route('/set_primary_mic', methods=['POST'])
+def set_primary_mic():
+    data = request.json
+    _APP_CONFIG['microphones'] = [ data['primary_mic'] ]
+    write_config()
+    return jsonify({"status": "success"})
+
+@app.route('/set_typing_mode', methods=['POST'])
+def set_typing_mode():
+    data = request.json
+    _APP_CONFIG['type_mode'] = data['type_mode']
+    write_config()
+    return jsonify({"status": "success"})
+
+@app.route('/set_quiet_mode', methods=['POST'])
+def set_quiet_mode():
+    data = request.json
+    _APP_CONFIG['quiet_mode'] = data['quiet_mode']
+    write_config()
+    return jsonify({"status": "success"})
+
+def run_flask_app():
+    app.run(host='0.0.0.0', port=4812)
+
+def start_flask_server():
+    flask_thread = threading.Thread(target=run_flask_app)
+    flask_thread.daemon = True
+    flask_thread.start()

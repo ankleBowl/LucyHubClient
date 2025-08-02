@@ -1,0 +1,211 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        @import url("https://use.typekit.net/jmr4hbb.css");
+        body {
+            font-family: 'filson-pro', sans-serif;
+            background-color: #E4E1D7;
+
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        h1 {    
+            font-size: 2.5rem;
+        }
+
+        p {
+            margin: 0;
+        }
+
+        .horiz-panel-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            justify-content: center;
+            flex-wrap: wrap;
+            
+            max-width: 1200px;
+        }
+
+        .vert-panel-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel {
+            background-color: white;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border: 2px solid black;
+
+            font-size: 1.4rem;
+
+            width: 350px;
+        }
+
+        .flex-down {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .flex-right {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            padding-top: 0;
+            border: none;
+            border-bottom: 2px solid black;
+
+            font-size: 1.4rem;
+            font-family: 'filson-pro', sans-serif;
+
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        input[type="checkbox"] {
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+
+            border: 2px solid black;
+            appearance: none;
+        }
+
+        input[type="checkbox"]:hover {
+            background-color: #f0f0f0;
+        }
+
+        input[type="checkbox"]:checked {
+            background-color: black;
+            border: 2px solid black;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: black;
+            border: none;
+
+            font-size: 1rem;
+            font-family: 'filson-pro', sans-serif;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.1s ease;
+        }
+        
+        button:hover {
+            background-color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Your LucyHub</h1>
+    <div class="horiz-panel-container">
+        <div class="panel flex-down">
+            <p style="font-weight: bold;">Primary Microphone</p>
+            <input type="text" id="primary-mic">
+            <button onclick="setPrimaryMic()">Save</button>
+        </div>
+        <div class="panel flex-down">
+            <p style="font-weight: bold;">Server Address</p>
+            <input type="text" id="server-addr">
+            <div class="flex-right">
+                <input type="checkbox" id="is-secure">
+                <p>Use https/wss?</p>
+            </div>
+            <button onclick="setServerAddr()">Save</button>
+        </div>
+        <div class="panel flex-right" style="align-items: center;">
+            <input type="checkbox" id="typing-mode" onclick="setTypingMode()">
+            <p>Typing Mode?</p>
+        </div>
+        <div class="panel flex-right" style="align-items: center;">
+            <input type="checkbox" id="quiet-mode" onclick="setQuietMode()">
+            <p>Quiet Mode?</p>
+        </div>
+    </div>
+    <p style="margin-top: 30px;">Copyright 2025 - Lye Software Inc</p>
+</body>
+<script>
+    function setServerAddr() {
+        fetch('/set_server_address', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                server_address: document.getElementById('server-addr').value,
+                is_secure: document.getElementById('is-secure').checked
+            })
+        })
+    }
+
+    function setPrimaryMic() {
+        fetch('/set_primary_mic', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                primary_mic: document.getElementById('primary-mic').value
+            })
+        });
+    }
+
+    function setTypingMode() {
+        fetch('/set_typing_mode', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                typing_mode: document.getElementById('typing-mode').checked
+            })
+        });
+    }
+
+    function setQuietMode() {
+        fetch('/set_quiet_mode', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                quiet_mode: document.getElementById('quiet-mode').checked
+            })
+        });
+    }
+
+    // fetch get_config endpint to set initial values
+    fetch('/get_config')
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
+            let mic = data.microphones[0];
+            if (mic) {
+                document.getElementById('primary-mic').value = mic;
+            } else {
+                document.getElementById('primary-mic').placeholder = "Unset";
+            }
+            document.getElementById('server-addr').value = data.url;
+            document.getElementById('is-secure').checked = data.is_secure;
+            document.getElementById('typing-mode').checked = data.typing_mode;
+            document.getElementById('quiet-mode').checked = data.quiet_mode;
+        })
+</script>
+</html>

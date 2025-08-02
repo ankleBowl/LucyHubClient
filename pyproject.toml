@@ -9,29 +9,19 @@ dependencies = [
     "pyaudio",
     "numpy",
     "requests",
-    "python-dotenv",
+
     "torch==2.7.0",
     "torchaudio==2.7.0",
     "websockets",
     "scipy",
-    "pyyaml"
+    "pyyaml",
+    "openwakeword",
+    "silero-vad",
+    "selenium",
+    "webdriver_manager"
 ]
 
 [tool.setuptools.package-data]
 "lucyhubclient.sounds" = ["*.wav"]
 "lucyhubclient.templates" = ["*.html"]
 "lucyhubclient.tools.clock_util" = ["*.wav"]
-
-
-[project.optional-dependencies]
-# UI Providers
-ui_selenium = ["selenium", "webdriver_manager"]
-ui_pywebview = ["pywebview[qt]"]
-
-# Detect Speech Providers
-ds_vad = ["silero-vad"]
-ds_wakeword = ["openwakeword", "silero-vad"]
-
-# Voice Providers
-tts_elevenlabs = ["elevenlabs"]
-tts_kokoro = ["kokoro"]

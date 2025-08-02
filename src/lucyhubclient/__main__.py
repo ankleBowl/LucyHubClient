@@ -292,12 +292,8 @@ if __name__ == "__main__":
         loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown()))
 
     print_colored_log("Starting Lucy WebView...", "blue")
-    if get_config()["webview_type"] == "pywebview":
-        from .lucywebview.pywebview import PyLucyWebView
-        lucy_webview = PyLucyWebView(fullscreen=not args.dev)
-    else:
-        from .lucywebview.selenium import SeleniumLucyWebView
-        lucy_webview = SeleniumLucyWebView(driver=get_config()["webview_type"], fullscreen=not args.dev)
+    from .selenium import SeleniumLucyWebView
+    lucy_webview = SeleniumLucyWebView(driver=get_config()["webview_type"], fullscreen=not args.dev)
 
     try:
         loop.run_until_complete(app())

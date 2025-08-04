@@ -73,6 +73,11 @@ class SeleniumLucyWebView:
             if response == value:
                 return True
         return False
+    
+    def close(self):
+        if self.driver:
+            self.driver.quit()
+            self.driver = None
 
 if __name__ == "__main__":
     lucy_webview = SeleniumLucyWebView(driver="chromium", fullscreen=True)

@@ -34,7 +34,6 @@ def load_config():
             config = DEFAULT_CONFIG_SCHEMA.copy() 
 
         _APP_CONFIG = config
-        print(f"Configuration loaded successfully from '{CONFIG_FILE}'.")
         return _APP_CONFIG
     except yaml.YAMLError as e:
         raise ValueError(f"Error parsing YAML configuration file '{CONFIG_FILE}': {e}")
@@ -72,6 +71,16 @@ import threading
 from importlib import resources
 
 app = Flask(__name__)
+
+import logging
+
+# Disable Flask's default logger
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
+# Disable all other Flask logging if needed
+flask_log = logging.getLogger('flask.app')
+flask_log.setLevel(logging.CRITICAL)
 
 @app.route('/')
 def index():

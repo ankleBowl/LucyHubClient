@@ -308,18 +308,26 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             margin: 20px 0;
         }
+
+        .copyright {
+            font-style: italic;
+            font-weight: 200;
+            font-size: 1em !important;
+        }
     </style>
 </head>
 <body class="">
     <div class="not-connected-overlay">
         <div>
             <p><b>LucyHub is not currently connected to the server.</b></p>
+            <br>
             <p>Please ensure that LucyServer is running and available. Configuration can be modified at:</p>
             <br>
             <img id="ip-qr">
             <p id="ip-addr"><b>{IP_ADDR}</b></p>
             <br>
-            <p>Copyright 2025 - Lye Software Inc</p>
+            <br>
+            <p class="copyright">Copyright 2025 - Lye Software</p>
         </div>
     </div>
 

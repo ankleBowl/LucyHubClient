@@ -18,8 +18,15 @@ class DetectSpeechSileroVADProvider:
     def feed_audio(self, buffer):
         audio = np.frombuffer(buffer, dtype=np.int16)
         tensor = torch.from_numpy(audio).float() / 32768.0
-        is_speaking = self.vad_model(tensor, 16000).item()
 
+        chunks = tensor.split(512) # Split into chunks of 512 samples
+        is_speaking_arr = []
+        for chunk in chunks:
+            print(f"[VAD] Feeding audio of shape: {chunk.shape}")
+            is_speaking_arr.append(self.vad_model(chunk, 16000).item())
+        is_speaking = np.mean(is_speaking_arr)
+
+        # is_speaking = self.vad_model(tensor, 16000).item()
         if is_speaking >= 0.2:
             self.audio_history = np.concatenate((self.audio_history, audio))
 

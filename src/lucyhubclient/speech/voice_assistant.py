@@ -2,6 +2,7 @@ import pyaudio
 import threading
 import time
 import requests
+import asyncio
 
 from ..config import get_http_url
 from enum import Enum
@@ -49,19 +50,14 @@ class VoiceAssistant:
 
         self.is_closing = False
 
-    def run(self):
-        self.vad_loop_thread = threading.Thread(target=self._loop, args=())
-        self.transcribe_loop_thread = threading.Thread(target=self._transcribe_loop, args=())
+    async def run(self):
+        await self.detect_speech_provider.start()
+        asyncio.create_task(self._loop())
+        asyncio.create_task(self._transcribe_loop())
 
-        self.vad_loop_thread.start()
-        self.transcribe_loop_thread.start()
-
-
-    def _loop(self):
+    async def _loop(self):
         self.awake = False
         self.can_try_transcribe = False
-
-        # CHUNKSIZE_SECONDS = self.CHUNKSIZE / 16000.0
 
         while True:
             if self.is_closing:
@@ -69,13 +65,15 @@ class VoiceAssistant:
                 self.stream.close()
                 return
             
+            await asyncio.sleep(0.01)
+            
             data = self.stream.read(self.CHUNKSIZE, exception_on_overflow=False)
             self.detect_speech_provider.feed_audio(data)
 
             if self.detect_speech_provider.is_speaking() and not self.awake:
                 print("[AUDIO] User started speaking")
                 if self.start_speaking_callback != None:
-                    self.start_speaking_callback()
+                    asyncio.create_task(self.start_speaking_callback())
                 self.awake = True
                 self.last_transcription_submitted_time = float('inf')
             elif self.detect_speech_provider.is_done_speaking() and self.awake:
@@ -83,29 +81,8 @@ class VoiceAssistant:
                 self.awake = False
                 self.try_transcribe = True
 
-            # arr = np.frombuffer(data, dtype=np.int16)
-            # tensor = torch.from_numpy(audio).float() / 32768.0
-            # is_speaking = self.vad_model(tensor, 16000).item()
 
-            # if is_speaking >= 0.2:
-            #     self.audio_history.append(data)
-            # self.speaking_history.append(is_speaking)
-
-            # if len(self.audio_history) < int(0.25 / CHUNKSIZE_SECONDS):
-            #     continue
-
-            # self.speaking_history = self.speaking_history[-int(0.25 / CHUNKSIZE_SECONDS):]
-            # avg_speaking = np.mean(self.speaking_history)
-            # if avg_speaking > 0.8 and not self.awake:
-            #     self.start_speaking_callback()
-            #     self.awake = True
-            #     self.last_transcription_submitted_time = float('inf') # Ensure any previously queued transcription is NOT submitted
-            # elif avg_speaking < 0.6 and self.awake:
-            #     self.awake = False
-            #     self.try_transcribe = True
-
-
-    def _transcribe_loop(self):
+    async def _transcribe_loop(self):
         self.last_transcription = ""
         self.try_transcribe = False
 
@@ -113,7 +90,7 @@ class VoiceAssistant:
             if self.is_closing:
                 return
             if not self.try_transcribe:
-                time.sleep(0.05)
+                await asyncio.sleep(0.05)
                 continue
             self.try_transcribe = False
 
@@ -141,17 +118,18 @@ class VoiceAssistant:
 
             print(f"[TRANSCRIPTION] {transcription} (request_type={request_type})")
             if request_type == RequestType.QUERY:        
-                self._generate_response(transcription, self.current_conversation_response_nonce, time.time())
+                # self._generate_response(transcription, self.current_conversation_response_nonce, time.time())
+                asyncio.create_task(self._generate_response(transcription, self.current_conversation_response_nonce, time.time()))
             elif request_type == RequestType.INCOMPLETE_QUERY:
                 extra_time = 0
-                self.respond_thread = threading.Thread(target=self._generate_response, args=(transcription, self.current_conversation_response_nonce, time.time() + extra_time))
-                self.respond_thread.start()
+                asyncio.create_task(self._generate_response(transcription, self.current_conversation_response_nonce, time.time() + extra_time))
             elif request_type == RequestType.NOT_QUERY:
-                self._generate_response(None, self.current_conversation_response_nonce, time.time())
+                # self._generate_response(None, self.current_conversation_response_nonce, time.time())
+                pass
 
-    def _generate_response(self, transcription, nonce, respond_time):                
+    async def _generate_response(self, transcription, nonce, respond_time):                
         while respond_time > time.time():
-            time.sleep(0.01)
+            await asyncio.sleep(0.01)
 
         if nonce != self.current_conversation_response_nonce or self.try_transcribe or self.awake:
             # There's another transcription in progress or the response was interrupted
@@ -159,7 +137,7 @@ class VoiceAssistant:
             return
         
         self.detect_speech_provider.clear_audio()
-        self.end_speaking_callback(transcription)
+        asyncio.create_task(self.end_speaking_callback(transcription))
 
     def stop(self):
         print("[AUDIO] Stopping...")

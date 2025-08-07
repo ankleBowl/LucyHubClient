@@ -1,5 +1,4 @@
 import asyncio
-import websockets
 import json
 import socket
 import qrcode
@@ -17,8 +16,14 @@ from .tools.clock import LClockClient
 
 from .sound import SoundManager, Sound, SpeechSound
 
+from .socket_webview import SocketWebView
+
 from .speech.detect_speech_provider.wake_word import DetectWakeWordProvider
 from .speech import VoiceAssistant
+
+from .client import LucyWebSocketClient
+
+from .config import get_config, get_ws_url, start_flask_server, get_http_url
 
 from rich.console import Console
 from rich.theme import Theme
@@ -34,19 +39,18 @@ custom_theme = Theme({
     "webview": "green",
 })
 
-
 console = Console(theme=custom_theme)
 
 lucy_webview = None
 va = None
-websocket = None
-main_loop = None
-sound_manager = SoundManager()
+websocket_client = None
 
-last_request_sent = None
+sound_manager = None
+speech_sound = None
+
+main_loop_asyncio = None
+
 is_in_request = True
-ready = False
-close_websocket = False
 
 client_modules = {}
 
@@ -59,142 +63,54 @@ def get_local_ip():
     finally:
         s.close()
 
-local_ip = get_local_ip()
-qr_img = qrcode.make(f"http://{local_ip}:4812")
-import base64
-from io import BytesIO
-buffer = BytesIO()
-qr_img.save(buffer, format="PNG")
-qr_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+def get_qr_code_base64():
+    local_ip = get_local_ip()
+    qr_img = qrcode.make(f"http://{local_ip}:4812")
+    import base64
+    from io import BytesIO
+    buffer = BytesIO()
+    qr_img.save(buffer, format="PNG")
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+    return qr_base64
 
+async def on_user_start_speaking():
+    await websocket_client.send_wake_word_trigger()
 
-def play_sound(sound_name):
-    if get_config()["quiet_mode"] == "True":
-        return
-    sound_path = resources.files("lucyhubclient.sounds").joinpath(f"{sound_name}.wav")
-    sound = Sound.from_wav(sound_path)
+    sound = Sound.from_name("wake")
     sound_manager.add_sound(sound)
 
-async def receive_messages():
-    global last_request_sent, is_in_request, close_websocket, websocket, ready
-
-    while True:
-        if close_websocket:
-            break
-
-        set_lucy_webview_state("not-ready")
-            
-        try:
-            websocket = await connect_socket()
-            lucy_webview.run_javascript("LucyHub.setConnected(true)")
-            set_lucy_webview_state("idle")
-            ready = True
-            LucyClientModule.websocket = websocket
-        except Exception as e:
-            lucy_webview.run_javascript(f"LucyHub.setConnected(false, '{get_local_ip()}:4812', '{qr_base64}')")
-            await asyncio.sleep(1)
-            continue
-
-        while True:
-            try:
-                message = await asyncio.wait_for(websocket.recv(), timeout=0.1)
-
-                message = json.loads(message)
-                
-                # current_time = asyncio.get_event_loop().time()
-                # print_colored_log(f"[{(current_time - last_request_sent):.2f}s] [SERVER] {message}", "yellow")
-                # console.print(Pretty(message))
-
-                if message["type"] == "tool":
-                    # print(f"Tool call: {message['data']}")
-                    play_sound("use_tool")
-                    continue
-                elif message["type"] == "assistant":
-                    play_sound("complete")
-                    lucy_webview.set_volume(0.1)
-                    sound_manager.set_volume(0.1)
-                elif message["type"] == "tool_message":
-                    if message["tool"] in client_modules:
-                        module = client_modules[message["tool"]]
-                        await module.handle_message(message["data"])
-                elif message["type"] == "end":
-                    # print_colored_log("[INFO] End of conversation detected.", "blue")
-                    console.print("End of conversation detected.", style="system")
-                    is_in_request = False
-
-                elif message["type"] == "speech_start":
-                    on_assistant_start_speaking()
-                elif message["type"] == "audio":
-                    if get_config()["quiet_mode"]:
-                        continue
-
-                    base64_data = message["data"]
-                    audio_data = base64.b64decode(base64_data)
-                    audio_array = np.frombuffer(audio_data, dtype=np.float32)
-                    audio_array = (audio_array * 32767 * 32767).astype(np.int32)
-
-                    speech_sound.add_audio_data(audio_array)
-
-            except asyncio.TimeoutError:
-                if close_websocket:
-                    break
-            except websockets.ConnectionClosedOK:
-                console.print("WebSocket connection closed normally.", style="websocket")
-                close_websocket = True
-                break
-            except websockets.ConnectionClosedError as e:
-                console.print(f"WebSocket connection closed with error: {e}", style="websocket")
-                break
-
-async def connect_socket():
-    global ready
-
-    url = f'{get_ws_url()}/v1/ws/meewhee'
-    websocket = await websockets.connect(url)
-    data = {"type": "auth"}
-    await websocket.send(json.dumps(data))
-    await websocket.recv()
-
-    return websocket
-
-def on_user_start_speaking():
-    async def send_wake_word():
-        await websocket.send(json.dumps({"type": "wake_word_detected"}))
-    asyncio.run_coroutine_threadsafe(send_wake_word(), main_loop)
-    lucy_webview.set_volume(0)
+    await lucy_webview.set_volume(0)
     sound_manager.set_volume(0.1)
-    play_sound("wake")
-    set_lucy_webview_state("listening")
+    await lucy_webview.set_state("listening")
     console.print("User started speaking. Wake word detected.", style="audio")
 
-def on_user_end_speaking(transcription):
-    async def send_request():
-        global last_request_sent
-        console.print(f"Sending transcription: {transcription}", style="websocket")
-        await websocket.send(json.dumps({"type": "request", "message": transcription}))
-        last_request_sent = asyncio.get_event_loop().time()
-
-    lucy_webview.set_volume(0.5)
+async def on_user_end_speaking(transcription):
+    await lucy_webview.set_volume(0.5)
     sound_manager.set_volume(1.0)
 
     if transcription is None:
-        set_lucy_webview_state("idle")
+        await lucy_webview.set_state("idle")
     else:
-        play_sound("acknowledge")
-        set_lucy_webview_state("thinking")
-        asyncio.run_coroutine_threadsafe(send_request(), main_loop)
+        sound = Sound.from_name("acknowledge")
+        sound_manager.add_sound(sound)
 
-def on_assistant_start_speaking():
-    set_lucy_webview_state("speaking")
-    lucy_webview.set_volume(0.1)
+        await lucy_webview.set_state("thinking")
+        console.print(f"Sending transcription: {transcription}", style="websocket")
+        await websocket_client.send_request(transcription)
+
+async def on_assistant_start_speaking():
+    await lucy_webview.set_state("speaking")
+    await lucy_webview.set_volume(0.1)
     sound_manager.set_volume(0.1)
-    pass
 
 def on_assistant_end_speaking():
-    lucy_webview.set_volume(0.5)
     sound_manager.set_volume(1.0)
-    set_lucy_webview_state("idle")
 
+    async def update_state():
+        await lucy_webview.set_volume(0.5)
+        await lucy_webview.set_state("idle")
+        
+    asyncio.run_coroutine_threadsafe(update_state(), main_loop_asyncio) 
 
 def on_assistant_speech_volume(data):
     amount_per_new_bin = len(data) // 5
@@ -206,56 +122,91 @@ def on_assistant_speech_volume(data):
             end = len(data)
         reduced_data.append(sum(data[start:end]) / (end - start))
     reduced_data = [max(min((x + 145) / 145, 1), 0) for x in reduced_data]
-    json_array = json.dumps(reduced_data)
-    js_func = f"LucyHub.setSpeakingVisualizer({json_array});"
-    lucy_webview.run_javascript(js_func)
+    
+    async def update_visualizer():
+        await lucy_webview.set_speaing_visualizer(reduced_data)
+
+    asyncio.run_coroutine_threadsafe(update_visualizer(), main_loop_asyncio)
         
-speech_sound = SpeechSound(sample_rate=24000, volume_callback=on_assistant_speech_volume, done_speaking_callback=on_assistant_end_speaking)
-sound_manager.add_sound(speech_sound)
-
 async def shutdown():
-    global va, voice, websocket, close_websocket
-
     console.print("Shutting down...", style="system")
     
-    if lucy_webview:
-        console.print("Closing Lucy WebView...", style="webview")
-        lucy_webview.close()
-        console.print("Lucy WebView closed.", style="webview")
-    if va:
-        console.print("Stopping Voice Assistant...", style="audio")
-        va.stop()
-        console.print("Voice Assistant stopped.", style="audio")
-    if sound_manager:
-        console.print("Stopping Sound Manager...", style="audio")
-        sound_manager.stop()
-        console.print("Sound Manager stopped.", style="audio")
+    # if lucy_webview:
+    #     console.print("Closing Lucy WebView...", style="webview")
+    #     lucy_webview.close()
+    #     console.print("Lucy WebView closed.", style="webview")
+    # if va:
+    #     console.print("Stopping Voice Assistant...", style="audio")
+    #     va.stop()
+    #     console.print("Voice Assistant stopped.", style="audio")
+    # if sound_manager:
+    #     console.print("Stopping Sound Manager...", style="audio")
+    #     sound_manager.stop()
+    #     console.print("Sound Manager stopped.", style="audio")
 
-    console.print("Closing WebSocket...", style="websocket")
-    close_websocket = True
-    if websocket != None:
-        await websocket.close()
-        await websocket.wait_closed()
-    console.print("WebSocket closed.", style="websocket")
+    # console.print("Closing WebSocket...", style="websocket")
+    # await websocket_client.close()
+    # console.print("WebSocket closed.", style="websocket")
 
+async def on_reconnect():
+    print("[WebSocket] Reconnected to server.")
+    await lucy_webview.set_connected(True)
+    await lucy_webview.set_state('idle')
 
+async def on_disconnect():
+    print("[WebSocket] Disconnected from server.")
+    await lucy_webview.set_connected(False)
+    await lucy_webview.set_state('not-ready')
 
-def set_lucy_webview_state(state):
-    lucy_webview.run_javascript(f"LucyHub.setState('{state}');")
+async def on_message(message):
+    global is_in_request, speech_sound
+
+    if message["type"] == "tool":
+        sound = Sound.from_name("use_tool")
+        sound_manager.add_sound(sound)
+    elif message["type"] == "assistant":
+        sound = Sound.from_name("complete")
+        sound_manager.add_sound(sound)
+
+        await lucy_webview.set_volume(0.1)
+        sound_manager.set_volume(0.1)
+    elif message["type"] == "tool_message":
+        if message["tool"] in client_modules:
+            module = client_modules[message["tool"]]
+            await module.handle_message(message["data"])
+    elif message["type"] == "end":
+        console.print("End of conversation detected.", style="system")
+        is_in_request = False
+    elif message["type"] == "speech_start":
+        await on_assistant_start_speaking()
+    elif message["type"] == "audio":
+        base64_data = message["data"]
+        audio_data = base64.b64decode(base64_data)
+        audio_array = np.frombuffer(audio_data, dtype=np.float32)
+        audio_array = (audio_array * 32767 * 32767).astype(np.int32)
+        speech_sound.add_audio_data(audio_array)
 
 async def app():
-    global voice, lucy_webview, va, websocket, main_loop, is_in_request
+    global lucy_webview, va, main_loop_asyncio, is_in_request, websocket_client, sound_manager, speech_sound
 
-    main_loop = asyncio.get_event_loop()
+    main_loop_asyncio = asyncio.get_event_loop()
 
-    console.print("Connecting to WebSocket...", style="websocket")
+    console.print("Starting Flask Config Server...", style="system")
+    start_flask_server()
 
+    console.print("Starting Lucy WebView...", style="webview")
+    lucy_webview = SocketWebView()
+    lucy_webview.start_frontend_server()
+    await lucy_webview.start()
+    # lucy_webview.open('Google Chrome')
+    await lucy_webview.wait_for_connection()
+    await lucy_webview.update_ip_qr(f"{get_local_ip()}:4812", get_qr_code_base64())    
+    await lucy_webview.set_connected(False)
+    
     if get_config()["type_mode"] == True:
+        console.print("Starting Lucy WebView in Type Mode...", style="webview")
         def input_thread():
-            global is_in_request, ready
-
-            while not ready:
-                time.sleep(0.1)
+            global is_in_request
 
             while True:
                 try:
@@ -280,9 +231,27 @@ async def app():
                             mic_list=get_config()["microphones"],
                             start_speaking_callback=None, 
                             end_speaking_callback=on_user_end_speaking)
-        va.run()
+        await va.run()
+
+    console.print("Connecting to Lucy Server...", style="websocket")
+    global websocket_client
+    websocket_client = LucyWebSocketClient(
+        get_ws_url(),
+        on_reconnect=on_reconnect,
+        on_disconnect=on_disconnect,
+        on_message=on_message
+    )
+    await websocket_client.connect()
+
+    console.print("Starting Sound Manager...", style="audio")
+    sound_manager = SoundManager()
+
+    console.print("Adding Speech Sound...", style="audio")
+    speech_sound = SpeechSound(sample_rate=24000, volume_callback=on_assistant_speech_volume, done_speaking_callback=on_assistant_end_speaking)
+    sound_manager.add_sound(speech_sound)
 
     console.print("Loading Client Modules...", style="system")
+    LucyClientModule.websocket_client = websocket_client
     LucyClientModule.lucy_webview = lucy_webview
     LucyClientModule.sound_manager = sound_manager
     client_modules["spotify"] = LSpotifyClient()
@@ -290,8 +259,9 @@ async def app():
 
     console.print("Setup Complete!", style="system")
 
-    is_in_request = False
-    await receive_messages()
+    # keep thread alive
+    while True:
+        await asyncio.sleep(1)
 
 
 if __name__ == "__main__":
@@ -302,8 +272,6 @@ if __name__ == "__main__":
     parser.add_argument("--lucy-server-ws-addr", type=str, default="ws://localhost:8000", help="WebSocket address of the Lucy server")
     args = parser.parse_args()
 
-    from .config import get_config, get_ws_url, start_flask_server
-
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
@@ -311,10 +279,8 @@ if __name__ == "__main__":
         loop.add_signal_handler(sig, lambda: asyncio.create_task(shutdown()))
 
     console.print("Starting LucyHubClient...", style="system")
-    from .selenium import SeleniumLucyWebView
-    lucy_webview = SeleniumLucyWebView(driver=get_config()["webview_type"], fullscreen=not args.dev)
-    lucy_webview.run_javascript(f"LucyHub.setConnected(false, '{get_local_ip()}:4812')")
-    start_flask_server()
+    
+
 
     try:
         loop.run_until_complete(app())

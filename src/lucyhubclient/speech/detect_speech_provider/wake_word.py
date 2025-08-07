@@ -3,6 +3,7 @@ from openwakeword.model import Model
 
 import threading
 import time
+import asyncio
 import numpy as np
 
 from ...speech.detect_speech_provider.vad import DetectSpeechSileroVADProvider
@@ -22,18 +23,22 @@ class DetectWakeWordProvider(DetectSpeechSileroVADProvider):
         self.is_closing = False
 
         self.wake_word_detected = False
-        self.wake_word_check_thread = threading.Thread(target=self._check_for_wake_word, args=())
-        self.wake_word_check_thread.start()
+        # self.wake_word_check_thread = threading.Thread(target=self._check_for_wake_word, args=())
+        # self.wake_word_check_thread.start()
+        
 
         self.wake_word_detection_callback = wake_word_detection_callback
 
-    def _check_for_wake_word(self):
+    async def start(self):
+        self.wake_word_task = asyncio.create_task(self._check_for_wake_word())
+
+    async def _check_for_wake_word(self):
         while True:
             if self.is_closing:
                 print("[WAKE WORD] Stopping wake word check thread")
-                return
+                break
             if self.wake_word_detected:
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
                 continue
             
             wake_word_detection_audio = self.wake_word_audio_buffer[-int(self.SAMPLERATE * 0.4):]
@@ -42,7 +47,7 @@ class DetectWakeWordProvider(DetectSpeechSileroVADProvider):
             self.wake_word_likelyhood_history.append(prediction)
 
             if len(self.wake_word_likelyhood_history) < 5:
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
                 continue
             if len(self.wake_word_likelyhood_history) > 5:
                 self.wake_word_likelyhood_history = self.wake_word_likelyhood_history[-5:]
@@ -53,9 +58,9 @@ class DetectWakeWordProvider(DetectSpeechSileroVADProvider):
                 print(f"[WAKE WORD DETECTED] {self.wake_word_detected}, {len(self.wake_word_audio_buffer)} samples, {total} likelyhood")
                 self.last_triggered_time = time.time()
                 if self.wake_word_detection_callback:
-                    self.wake_word_detection_callback()
+                    await self.wake_word_detection_callback()
 
-            time.sleep(0.01)
+            await asyncio.sleep(0.01)
 
 
     def feed_audio(self, buffer):

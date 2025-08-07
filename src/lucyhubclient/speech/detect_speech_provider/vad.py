@@ -22,7 +22,7 @@ class DetectSpeechSileroVADProvider:
         chunks = tensor.split(512) # Split into chunks of 512 samples
         is_speaking_arr = []
         for chunk in chunks:
-            print(f"[VAD] Feeding audio of shape: {chunk.shape}")
+            # print(f"[VAD] Feeding audio of shape: {chunk.shape}")
             is_speaking_arr.append(self.vad_model(chunk, 16000).item())
         is_speaking = np.mean(is_speaking_arr)
 

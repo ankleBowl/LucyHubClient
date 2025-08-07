@@ -354,7 +354,14 @@
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
     }
 
+    let prevImageSrc = null;
+
     function initTextures(album_art_src) {
+        if (album_art_src == prevImageSrc) {
+            console.log("Same image as before, skipping texture load.");
+            return;
+        }
+
         if (activeTexture == "u_texture_one") {
             activeTexture = "u_texture_two";
         } else {
@@ -363,6 +370,8 @@
 
         console.log("Loading texture: ", album_art_src);
         console.log("Active texture: ", activeTexture);
+
+        prevImageSrc = album_art_src;
 
 
         let newImage = document.createElement("img");

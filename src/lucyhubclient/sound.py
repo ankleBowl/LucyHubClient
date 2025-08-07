@@ -5,6 +5,8 @@ from scipy.io import wavfile
 import numpy as np
 import time
 import warnings
+from .config import get_config
+from importlib import resources
 
 warnings.filterwarnings("ignore", category=wavfile.WavFileWarning)
 
@@ -81,6 +83,11 @@ class Sound:
         if audio_sr != 48000:
             raise ValueError("Audio sample rate must be 48000 Hz")
         return Sound(audio_data)
+    
+    def from_name(name):
+        sound_path = resources.files("lucyhubclient.sounds").joinpath(f"{name}.wav")
+        sound = Sound.from_wav(sound_path)
+        return sound
 
     def __init__(self, audio_data):
         self.uuid = str(uuid.uuid4())
@@ -238,7 +245,8 @@ class SoundManager:
             for sound_id in done_sounds:
                 del self.sounds[sound_id]
 
-            # chunk *= self.volume
+            if get_config()["quiet_mode"]:
+                chunk = np.zeros_like(chunk)
 
             self.stream.write(chunk.tobytes())
                 

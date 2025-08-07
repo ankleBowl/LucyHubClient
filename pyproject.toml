@@ -16,10 +16,10 @@ dependencies = [
     "pyyaml",
     "openwakeword",
     "silero-vad",
-    "selenium",
     "webdriver_manager",
     "flask",
     "qrcode[pil]",
+    "rich"
 ]
 
 [tool.setuptools.package-data]

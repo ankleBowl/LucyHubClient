@@ -88,6 +88,18 @@ def index():
     with open(file, 'r') as f:
         return f.read()
     
+@app.route('/internal_ui')
+def internal_ui():
+    file = resources.files('lucyhubclient.templates') / 'index.html'
+    with open(file, 'r') as f:
+        return f.read()
+    
+@app.route('/background.html')
+def background_html():
+    file = resources.files('lucyhubclient.templates') / 'background.html'
+    with open(file, 'r') as f:
+        return f.read()
+    
 @app.route('/get_config')
 def get_config_route():
     return jsonify(get_config())

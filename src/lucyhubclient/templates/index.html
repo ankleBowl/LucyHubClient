@@ -350,28 +350,50 @@
     <iframe id="music-bg" src="background.html"></iframe>
 </body>
 <script>
-    // classes = ['idle', 'listening', 'thinking', 'speaking', 'not-ready'];
-    // index = 0;
-    // function cycleIndicators() {
-    //     const indicators = document.querySelector('.lucy-indicators');
-    //     indicators.className = `lucy-indicators ${classes[index]}`;
-    //     index = (index + 1) % classes.length;
-    // }
-    // setInterval(cycleIndicators, 3000);
+    function connect() {
+        let ws = new WebSocket('ws://localhost:4813');
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const result = eval(data["script"])
+            if (data["forget"]) {
+                return;
+            }
+            ws.send(JSON.stringify({
+                result: result,
+                uuid: data["uuid"]
+            }));
+        };
+        ws.onopen = function() {
+            console.log('WebSocket connection established.');
+        };
+        ws.onerror = function(error) {
+            ws.close();
+        };
+        ws.onclose = function() {
+            console.log('WebSocket connection closed. Retrying in 1 second...');
+            setTimeout(function() {
+                connect();
+            }, 1000);
+        };
+    }
+
+    connect();
+    
 </script>
 <script>
     let flags = {}
     let currentState = 'not-ready';
 
     window.LucyHub = {
-        setConnected: (isConnected, ipAddr="", qrBase64="") => {
+        updateIPAndQR: (ipAddr, qrBase64) => {
+            document.getElementById('ip-addr').textContent = ipAddr;
+            document.getElementById('ip-qr').src = `data:image/png;base64,${qrBase64}`;
+        },
+
+        setConnected: (isConnected) => {
             const overlay = document.querySelector('.not-connected-overlay');
             overlay.style.opacity = isConnected ? '0' : '1';
             overlay.style.pointerEvents = isConnected ? 'none' : 'auto';
-
-            document.getElementById('ip-addr').textContent = ipAddr;
-            document.getElementById('ip-qr').src = `data:image/png;base64,${qrBase64}`;
-
         },
         setState: (state) => {
             restoreLucyIndicators();
@@ -391,6 +413,8 @@
             }
         },
         loadIFrame: (url, isVisible) => {
+            console.log('Loading iframe URL:', url, 'Visible:', isVisible);
+
             flags = {}
 
             const iframe = document.getElementById('iframe');
@@ -406,6 +430,7 @@
         },
         getIFrameURL: () => {
             const iframe = document.getElementById('iframe');
+            console.log('Current iframe URL:', iframe.src);
             return iframe.src;
         },
         getFlag: (flag) => {
@@ -419,6 +444,8 @@
             });
         },
     }
+
+    
 
     function restoreLucyIndicators() {
         const indicators = document.querySelector('.lucy-indicators');
@@ -450,23 +477,13 @@
             
         }
         if (event.data.type === 'music_player_state_changed') {
-//             [Log] Object (index.html, line 392)
-
-        // album_art: "https://i.scdn.co/image/ab67616d0000b2738602f6b89b0471366382d42e"
-
-        // is_playing: true
-
-        // track_album: "Cigarettes & Wine (feat. Holly Humberstone)"
-
-        // track_artist: "Del Water Gap, Holly Humberstone"
-
-        // track_duration: 181666
-
-        // track_progress: 164955
-
-        // track_title: "Cigarettes & Wine (feat. Holly Humberstone)"
-
-        // Object Prototype
+            // album_art: "https://i.scdn.co/image/ab67616d0000b2738602f6b89b0471366382d42e"
+            // is_playing: true
+            // track_album: "Cigarettes & Wine (feat. Holly Humberstone)"
+            // track_artist: "Del Water Gap, Holly Humberstone"
+            // track_duration: 181666
+            // track_progress: 164955
+            // track_title: "Cigarettes & Wine (feat. Holly Humberstone)"
             handleNowPlayingEvent(event.data.data);
         }
     });

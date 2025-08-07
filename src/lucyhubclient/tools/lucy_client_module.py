@@ -2,7 +2,8 @@ import json
 from ..sound import SoundManager
 
 class LucyClientModule:
-    websocket = None
+
+    websocket_client = None
     lucy_webview = None
     sound_manager: SoundManager = None
 
@@ -20,13 +21,7 @@ class LucyClientModule:
         raise NotImplementedError("Subclasses must implement handle_message method.")
     
     async def send_socket_message(self, data):
-        wrapper = {
-            "type": "tool_client_message",
-            "tool": self.name,
-            "data": data
-        }
-        await self.websocket.send(json.dumps(wrapper))
-
+        await self.websocket_client.send_tool_message(self.name, data)
 
     def log(self, message):
         print(f"[{self.name.upper()} CLIENT] {message}")

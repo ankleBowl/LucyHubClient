@@ -1,8 +1,9 @@
 from ..tools.lucy_client_module import LucyClientModule
 import os
-from scipy.io import wavfile
 import asyncio
 from importlib import resources
+
+import soundfile as sf
 
 from ..sound import Sound, LoopPlaybackModifier, FadeOutEffect, FadeInEffect
 
@@ -14,7 +15,7 @@ class LClockClient(LucyClientModule):
         if not os.path.exists(timer_audio_path):
             raise FileNotFoundError(f"Timer audio file not found at {timer_audio_path}")
         
-        audio_data = wavfile.read(timer_audio_path)[1]
+        audio_data, audio_sr = sf.read(timer_audio_path, dtype='int16')
 
         self.timer_sound_id = None
         

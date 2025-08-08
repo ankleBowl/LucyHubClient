@@ -12,16 +12,12 @@ class SocketWebView:
         self.client = None
         self.responses = {}
 
-    def open(self, chrome_path, dev=True):
+    def open(self, chrome_path):
         if not IS_MACOS:
             command = f'{chrome_path} "http://localhost:4814/"'
         else:
             command = f'open -a "{chrome_path}" "http://localhost:4814/" --args'
-
-        if dev:
-            command += ' --auto-open-devtools-for-tabs'
-        else:
-            command += ' --kiosk --disable-infobars'
+        command += ' --kiosk --disable-infobars'
         print(f"[WebView] Opening webview with command: {command}")
         os.system(command)
 

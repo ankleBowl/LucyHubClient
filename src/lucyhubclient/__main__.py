@@ -198,7 +198,8 @@ async def app():
     lucy_webview = SocketWebView()
     lucy_webview.start_frontend_server()
     await lucy_webview.start()
-    # lucy_webview.open('Google Chrome')
+    if args.open_ui:
+        lucy_webview.open(args.browser_path)
     await lucy_webview.wait_for_connection()
     await lucy_webview.update_ip_qr(f"{get_local_ip()}:4812", get_qr_code_base64())    
     await lucy_webview.set_connected(False)
@@ -263,13 +264,11 @@ async def app():
     while True:
         await asyncio.sleep(1)
 
-
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dev", action="store_true", help="Run in development mode")
-    parser.add_argument("--lucy-server-addr", type=str, default="http://localhost:8000", help="Address of the Lucy server")
-    parser.add_argument("--lucy-server-ws-addr", type=str, default="ws://localhost:8000", help="WebSocket address of the Lucy server")
+    parser.add_argument("--open-ui", action="store_true", help="Open the web UI automatically in the default browser")
+    parser.add_argument("--browser-path", type=str, default="chrome", help="Path to the browser executable to open the web UI")
     args = parser.parse_args()
 
     loop = asyncio.new_event_loop()
@@ -280,8 +279,6 @@ if __name__ == "__main__":
 
     console.print("Starting LucyHubClient...", style="system")
     
-
-
     try:
         loop.run_until_complete(app())
     finally:

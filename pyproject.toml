@@ -9,7 +9,7 @@ dependencies = [
     "pyaudio",
     "numpy",
     "requests",
-    "scipy",
+    "soundfile",
     "pyyaml",
     "openwakeword",
     "flask",

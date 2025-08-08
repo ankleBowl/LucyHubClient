@@ -1,14 +1,10 @@
 import pyaudio
 import threading
 import uuid
-from scipy.io import wavfile
 import numpy as np
 import time
-import warnings
 from .config import get_config
 from importlib import resources
-
-warnings.filterwarnings("ignore", category=wavfile.WavFileWarning)
 
 # ----------
 
@@ -71,9 +67,10 @@ class LoopPlaybackModifier(SoundPlaybackModifier):
         if sound.current_position >= self.loop_end_frame:
             sound.current_position = self.loop_start_frame
 
+import soundfile as sf
 class Sound:
     def from_wav(file_path):
-        audio_sr, audio_data = wavfile.read(file_path)
+        audio_data, audio_sr = sf.read(file_path, dtype='int16')
         if audio_data.dtype == 'int16':
             audio_data = audio_data.astype(np.int32)
             audio_data = audio_data * 32768  # Normalize to int32 range

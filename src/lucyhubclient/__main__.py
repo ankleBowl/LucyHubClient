@@ -199,7 +199,7 @@ async def app():
     lucy_webview.start_frontend_server()
     await lucy_webview.start()
     if args.open_ui:
-        lucy_webview.open(args.browser_path)
+        lucy_webview.open(args.browser_path, dev=args.dev)
     await lucy_webview.wait_for_connection()
     await lucy_webview.update_ip_qr(f"{get_local_ip()}:4812", get_qr_code_base64())    
     await lucy_webview.set_connected(False)
@@ -269,6 +269,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--open-ui", action="store_true", help="Open the web UI automatically in the default browser")
     parser.add_argument("--browser-path", type=str, default="chrome", help="Path to the browser executable to open the web UI")
+    parser.add_argument("--dev", action="store_true", help="Open the web UI in dev mode (not kiosk)")
     args = parser.parse_args()
 
     loop = asyncio.new_event_loop()

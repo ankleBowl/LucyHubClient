@@ -12,14 +12,15 @@ class SocketWebView:
         self.client = None
         self.responses = {}
 
-    def open(self, chrome_path):
+    def open(self, chrome_path, dev=False):
         if not IS_MACOS:
             command = f'{chrome_path} "http://localhost:4814/"'
         else:
             command = f'open -a "{chrome_path}" "http://localhost:4814/" --args'
-        command += ' --kiosk --disable-infobars'
+        if not dev:
+            command += ' --kiosk --disable-infobars'
         print(f"[WebView] Opening webview with command: {command}")
-        os.system(command)
+        os.system(f"{command} &")
 
     async def wait_for_connection(self):
         while self.client is None:

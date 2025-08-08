@@ -9,14 +9,9 @@ dependencies = [
     "pyaudio",
     "numpy",
     "requests",
-    "torch",
-    "torchaudio",
-    "websockets",
     "scipy",
     "pyyaml",
     "openwakeword",
-    "silero-vad",
-    "webdriver_manager",
     "flask",
     "qrcode[pil]",
     "rich"
@@ -26,3 +21,4 @@ dependencies = [
 "lucyhubclient.sounds" = ["*.wav"]
 "lucyhubclient.templates" = ["*.html"]
 "lucyhubclient.tools.clock_util" = ["*.wav"]
+"lucyhubclient.speech.detect_speech_provider" = ["*.onnx"]
